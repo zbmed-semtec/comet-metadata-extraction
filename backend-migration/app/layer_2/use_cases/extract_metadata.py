@@ -7,13 +7,7 @@ from typing import Protocol, Optional, Dict, Any, Callable
 from app.layer_2.contracts import ExtractionContext, ExtractionState, ExtractionPipeline, PipelineRunner, PipelineComposer
 from app.layer_1.schemas.base_schema import BaseSchema
 from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
-
-# Step IDs for progress streaming (used by SSE endpoint and frontend)
-EXTRACTION_STEPS = [
-    ("pipeline", "Running extraction pipeline"),
-    ("jsonld_build", "Building JSON-LD document"),
-]
-
+from app.layer_3.steps.contracts.progress_observer import ProgressObserver
 
 # ---------------------------------------------------------------------------
 # Extraction metadata collector (optional enrichment for UI)
@@ -50,6 +44,7 @@ class ExtractMetadataUseCase:
         pipeline_composer: Optional[PipelineComposer] = None,
         pipeline_runner: Optional[PipelineRunner] = None,
         extraction_metadata_collector: Optional[MetadataCollector] = None,
+        progress_observer: Optional[ProgressObserver] = None,
     ):
         """
         Initialize the use case with all required tools.
@@ -64,25 +59,21 @@ class ExtractMetadataUseCase:
         self.pipeline_composer = pipeline_composer
         self.pipeline_runner = pipeline_runner
         self.extraction_metadata_collector = extraction_metadata_collector
-    
+        self.progress_observer = progress_observer
     def execute(
         self,
         repo_url: str,
         schema: BaseSchema,
         access_token: Optional[str] = None,
-        progress_callback: Optional[Callable[[str, str], None]] = None,
     ) -> ExtractMetadataResult:
         """
         Execute metadata extraction for one repository.
-
-        Optionally reports progress via progress_callback(step_id, status)
-        where status is "started" or "completed".
 
         Args:
             repo_url: URL of the repository
             schema: Schema to use (maSMP or CODEMETA)
             access_token: Optional access token for private repositories
-            progress_callback: Optional callback(step_id, status) for streaming progress
+            progress_observer: Optional observer for streaming progress
 
         Returns:
             ExtractMetadataResult with jsonld_document and extraction_metadata (for UI enrichment)
@@ -92,9 +83,6 @@ class ExtractMetadataUseCase:
         if not platform:
             raise ValueError("Unsupported repository platform. Supported: GitHub, GitLab")
 
-        if progress_callback:
-            progress_callback("pipeline", "started")
-        
         state = ExtractionState(
             metadata_collector=self.extraction_metadata_collector,
             data={
@@ -110,18 +98,10 @@ class ExtractMetadataUseCase:
 
         pipeline = self.pipeline_composer.compose(context)
         
-        metadata = self.pipeline_runner.run(pipeline, context, state).metadata_collector
-
-        if progress_callback:
-            progress_callback("pipeline", "completed")
+        metadata = self.pipeline_runner.run(pipeline, context, state, self.progress_observer).metadata_collector
 
         # Step 5: Build JSON-LD document
-        if progress_callback:
-            progress_callback("jsonld_build", "started")
-        
         jsonld_document = self.jsonld_builder.build_jsonld(metadata, schema)
-        if progress_callback:
-            progress_callback("jsonld_build", "completed")
 
         # extraction_metadata = collector.get_all() if collector else {}
         extraction_metadata = {}

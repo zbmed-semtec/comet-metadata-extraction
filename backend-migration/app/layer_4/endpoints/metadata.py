@@ -23,14 +23,9 @@ from app.layer_4.services.metadata_service import (
     run_extraction_with_progress,
     run_single_property_extraction,
 )
-from app.layer_2.use_cases.extract_metadata import EXTRACTION_STEPS
-
-# Step ID -> human-readable label for SSE progress events
-STEP_LABELS = {step_id: label for step_id, label in EXTRACTION_STEPS}
-
+from app.layer_4.progress_observers.sse_progress_observer import SSEProgressObserver
 
 router = APIRouter(prefix="/api", tags=["Metadata"])
-
 
 @router.get("/metadata", response_model=MetadataPlainResponse)
 async def extract_metadata_plain(
@@ -143,14 +138,6 @@ async def _stream_metadata_events(
     """Async generator that yields SSE events: progress for each step, then enriched result or error."""
     progress_queue = queue.Queue()
 
-    def progress_callback(step_id: str, status: str) -> None:
-        progress_queue.put({
-            "event": "progress",
-            "step": step_id,
-            "status": status,
-            "label": STEP_LABELS.get(step_id, step_id),
-        })
-
     result_holder = []
 
     def run_extraction_sync() -> None:
@@ -160,7 +147,7 @@ async def _stream_metadata_events(
                 schema_name=schema,
                 access_token=access_token,
                 with_enrichment=True,
-                progress_callback=progress_callback,
+                progress_observer=SSEProgressObserver(progress_queue),
             )
             result_holder.append(("ok", jsonld_document, enriched))
         except Exception as e:

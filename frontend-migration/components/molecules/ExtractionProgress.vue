@@ -6,93 +6,55 @@
     aria-label="Extraction in progress"
   >
     <div class="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+
+      <!-- Header -->
       <div class="mb-5 flex items-center gap-3">
         <div
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100"
           aria-hidden="true"
         >
           <svg
-            class="h-5 w-5 animate-spin text-primary-600"
+            class="h-5 w-5 text-primary-600"
+            :class="hasActiveStep ? 'animate-spin' : ''"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            aria-hidden="true"
           >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
         </div>
         <div class="min-w-0">
           <h3 class="text-lg font-semibold text-secondary-800">
             Extracting metadata
           </h3>
-          <p class="text-sm text-gray-500">
-            Please wait while we analyze the repository.
+          <p class="truncate text-sm text-gray-500">
+            {{ activeStep ? activeStep.label : steps.length === 0 ? 'Starting…' : 'Finishing up…' }}
           </p>
         </div>
       </div>
 
-      <!-- Single progress list: no duplicate "current stage" box -->
-      <div class="rounded-xl border border-gray-100 bg-gray-50/50 py-1">
-        <ul class="space-y-0.5 px-1 py-0.5 text-sm" aria-hidden="true">
-          <li
-            v-for="step in steps"
-            :key="step.id"
-            class="flex items-start gap-3 rounded-lg px-3 py-2 transition-colors"
-            :class="
-              step.active
-                ? 'bg-primary-50 text-primary-800'
-                : step.completed
-                  ? 'text-gray-600'
-                  : 'text-gray-400'
-            "
-          >
-            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
-              <span
-                v-if="step.completed"
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600"
-              >
-                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </span>
-              <span
-                v-else-if="step.active"
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-200"
-              >
-                <svg class="h-3.5 w-3.5 animate-spin text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              </span>
-              <span
-                v-else
-                class="flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 text-xs font-medium"
-              >
-                {{ step.order }}
-              </span>
-            </span>
-            <div class="min-w-0 flex-1 pt-0.5">
-              <span
-                class="font-medium"
-                :class="step.active ? 'text-primary-700' : step.completed ? 'text-gray-700' : 'text-gray-500'"
-              >
-                {{ step.label }}
-              </span>
-            </div>
-          </li>
-        </ul>
+      <!-- Progress bar -->
+      <div class="mb-3">
+        <div class="mb-1.5 flex items-center justify-between text-xs text-gray-500">
+          <span>
+            {{ completedCount }} of {{ totalCount }} steps completed
+          </span>
+          <span class="font-medium text-primary-600">{{ progressPercent }}%</span>
+        </div>
+
+        <div class="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <!-- Indeterminate animation when nothing has started yet -->
+          <div
+            v-if="steps.length === 0"
+            class="h-full w-1/3 animate-[indeterminate_1.4s_ease-in-out_infinite] rounded-full bg-primary-400"
+          />
+          <div
+            v-else
+            class="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out"
+            :style="{ width: `${progressPercent}%` }"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -100,51 +62,66 @@
 
 <script setup lang="ts">
 import type { ExtractionProgress as Progress } from '../../composables/useApi'
-import {watch, computed, ref} from 'vue'
-
-const STEP_ORDER = ['platform', 'file_parsing', 'external_data', 'llm', 'jsonld_build']
+import { computed, onMounted, onUnmounted, Ref, ref, watch } from 'vue'
 
 const props = defineProps<{
-  currentStep: Progress | null
+  progressQueue: Progress[] | null
 }>()
 
-const currentStepId = computed(() => props.currentStep?.step ?? null)
-const currentLabel = computed(() => props.currentStep?.label ?? null)
+const stepMap = ref<Map<string, Progress>>(new Map())
+const pipelineSize = ref<number | null>(null)
 
-const completedSteps = ref<Set<string>>(new Set())
+onMounted(() => {
+  stepMap.value = new Map()
+})
+
+onUnmounted(() => {
+  stepMap.value.clear()
+})
+
+const activeStep : Ref<Progress | null> = ref(null);
 
 watch(
-  () => props.currentStep,
-  (p) => {
-    if (!p) return
-    if (p.step === 'platform' && p.status === 'started') completedSteps.value = new Set()
-    if (p.status === 'completed') completedSteps.value.add(p.step)
-  },
-  { immediate: true }
-)
-
-const steps = computed(() =>
-  STEP_ORDER.map((id, index) => {
-    const isCompleted = completedSteps.value.has(id)
-    const isActive = props.currentStep?.step === id && props.currentStep?.status === 'started'
-    return {
-      id,
-      order: index + 1,
-      label: props.currentStep?.step === id ? props.currentStep?.label : stepLabel(id),
-      completed: isCompleted,
-      active: isActive
+  () => props.progressQueue,
+  (queue) => {
+    if (!queue || !queue.length) return
+    for (const p of queue) {
+      activeStep.value = p
+      if (p.pipeline_size) {
+        pipelineSize.value = p.pipeline_size
+      } else {
+        stepMap.value.set(p.step, p)
+      }
     }
-  })
+    stepMap.value = new Map(stepMap.value)
+  },
+  { deep: true }
 )
 
-function stepLabel(stepId: string): string {
-  const labels: Record<string, string> = {
-    platform: 'Extracting from platform API',
-    file_parsing: 'Parsing repository files',
-    external_data: 'Fetching external data',
-    llm: 'Extracting with LLM',
-    jsonld_build: 'Building JSON-LD document'
-  }
-  return labels[stepId] ?? stepId
-}
+const steps = computed<Progress[]>(() => Array.from(stepMap.value.values()))
+
+const totalCount = computed(() => pipelineSize.value ?? steps.value.length)
+
+const completedCount = computed(
+  () => steps.value.filter((s) => s.status === 'completed').length
+)
+
+const progressPercent = computed(() => {
+  if (totalCount.value === 0) return 0
+  return Math.round((completedCount.value / totalCount.value) * 100)
+})
+
+const hasActiveStep = computed(() => activeStep.value !== null)
+
+const activeStepIndex = computed(() => {
+  if (!activeStep.value) return -1
+  return steps.value.findIndex((s) => s.step === activeStep.value!.step)
+})
 </script>
+
+<style scoped>
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+</style>

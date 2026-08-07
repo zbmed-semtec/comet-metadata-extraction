@@ -34,7 +34,6 @@ The use case stays thin: collaborators are injected in the constructor for testi
 - **Initial state**: empty `SoftwareMetadata`, `ExtractionContext`, and `ExtractionState.data` (including `record_field` when a collector is configured).  
 - **Running** the pipeline through `ExtractionPipelineRunner`.  
 - **JSON-LD export** via the `JSONLDBuilder` protocol (implementation in `app/layer_3/builders/jsonld_builder.py`).  
-- **Progress callbacks** for streaming (`EXTRACTION_STEPS`: `pipeline`, `jsonld_build`).
 
 ## Folder structure
 
@@ -47,7 +46,6 @@ app/layer_2/
 `extract_metadata.py` contains:
 
 - `ExtractMetadataUseCase`, `ExtractMetadataResult`  
-- `EXTRACTION_STEPS` (progress labels for the API)  
 - `_build_record_field()` — attaches `state.data["record_field"]` to the optional `ExtractionMetadataCollector`  
   - Steps may call `record(field)` for platform defaults, or `record(field, source=..., confidence=...)` for explicit provenance  
   - Merge steps typically use `record_field_provenance()` in Layer 3 (see [Layer 3](layer-3.md))

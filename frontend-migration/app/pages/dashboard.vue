@@ -183,7 +183,7 @@
 
       <!-- Results: loading overlay + result panel (teleport so overlay covers full page including header/footer) -->
       <Teleport to="body">
-        <ExtractionProgress v-if="isLoading" :current-step="progressStep" />
+        <ExtractionProgress v-if="isLoading" :key="extractionKey" :progressQueue="progressQueue" />
       </Teleport>
       <Card
         v-if="extractionResult && !isLoading"
@@ -377,7 +377,8 @@ const error = computed({
 })
 const showTokenTip = ref(false)
 const tokenTipTab = ref<'github' | 'gitlab'>('github')
-const progressStep = ref<ExtractionProgress | null>(null)
+const progressQueue = ref<ExtractionProgress[]>([])
+const extractionKey = ref(0) // Used to reset ExtractionProgress component when starting a new extraction
 const extractionResult = computed<ExtractionStreamResult | null>({
   get: () => extractionStore.result,
   set: (v) => { extractionStore.result = v as ExtractionStreamResult | null },
@@ -422,17 +423,18 @@ useHead({
 const onExtract = async () => {
   error.value = ''
   extractionResult.value = null
-  progressStep.value = null
   fairnessStore.clear()
   activeResultsTab.value = 'metadata'
+  extractionKey.value++ // Reset ExtractionProgress component to clear previous progress
   isLoading.value = true
+  progressQueue.value = []
   try {
     const { extractMetadataStream, getFairness } = useApi()
     const result = await extractMetadataStream(
       repoUrl.value,
       schema.value,
       accessToken.value || undefined,
-      (p) => { progressStep.value = p }
+      (p) => { progressQueue.value.push(p) }
     )
     extractionStore.setForm(repoUrl.value, schema.value, accessToken.value)
     extractionStore.setResult(result)
@@ -456,7 +458,6 @@ const onExtract = async () => {
     error.value = e instanceof Error ? e.message : 'Extraction failed'
   } finally {
     isLoading.value = false
-    progressStep.value = null
   }
 }
 </script>

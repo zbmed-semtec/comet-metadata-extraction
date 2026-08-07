@@ -16,7 +16,6 @@ class StubExtractMetadataUseCase:
         repo_url: str,
         schema: str,
         access_token: Optional[str] = None,
-        progress_callback: Optional[object] = None,
     ) -> ExtractMetadataResult:  # type: ignore[override]
         self.calls.append(
             {

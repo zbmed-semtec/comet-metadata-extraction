@@ -9,6 +9,7 @@ declare function useRuntimeConfig(): {
 }
 
 export interface ExtractionProgress {
+  pipeline_size: number | null
   step: string
   status: 'started' | 'completed'
   label: string
@@ -136,7 +137,8 @@ export const useApi = () => {
             onProgress({
               step: data.step as string,
               status: data.status as 'started' | 'completed',
-              label: (data.label as string) ?? (data.step as string)
+              label: (data.label as string) ?? (data.step as string),
+              pipeline_size: typeof data.pipeline_size === 'number' ? data.pipeline_size : null,
             })
           }
           if (event === 'result') return data as unknown as ExtractionStreamResult
