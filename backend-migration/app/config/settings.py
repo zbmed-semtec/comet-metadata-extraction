@@ -7,6 +7,9 @@ from typing import Optional
 
 class Settings(BaseSettings):
     """Application settings"""
+
+    # Scehma settings
+    comet_schemas_path: str
     
     # API settings
     api_title: str = "Metadata Extractor API"

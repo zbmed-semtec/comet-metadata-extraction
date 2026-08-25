@@ -2,7 +2,6 @@
 Metadata extraction service: wires adapters and use case, runs extraction.
 Single place for composition; endpoints call this instead of building the use case themselves.
 """
-import os
 from datetime import datetime
 from typing import Optional, Dict, Any, Callable, List
 
@@ -14,6 +13,7 @@ from app.layer_2.use_cases.extract_metadata import ExtractMetadataUseCase
 from app.layer_4.builders.enriched_metadata import build_enriched_metadata
 from app.layer_3.steps.contracts.progress_observer import ProgressObserver
 from app.layer_3.schemas.linkml.linkml_schema_registry import LinkMlSchemaRegistry
+from app.config.settings import settings
 
 # Stateless components (created once, reused)
 _jsonld_builder = JSONLDBuilder()
@@ -22,9 +22,9 @@ _pipeline_runner = ExtractionPipelineRunner()
 _schema_registry = LinkMlSchemaRegistry()
 
 def initialize():
-    schema_dir = os.environ.get("COMET_SCHEMAS_PATH")
-    if schema_dir is None:
-        raise RuntimeError("COMET_SCHEMAS_PATH environment variable not set!")
+    schema_dir = settings.comet_schemas_path
+    if not schema_dir:
+        raise RuntimeError("COMET_SCHEMAS_PATH is not configured!")
     _schema_registry.load(schema_dir)
 
 

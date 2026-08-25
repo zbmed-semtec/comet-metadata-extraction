@@ -12,3 +12,4 @@ ruff>=0.1.6
 mkdocs>=1.6.0
 mkdocs-material>=9.5.0
 scancode-toolkit>=32.5.0
+linkml>=1.11.1

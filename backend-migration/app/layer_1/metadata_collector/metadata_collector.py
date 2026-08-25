@@ -1,8 +1,10 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
 
 @dataclass
-class MetadataProperty[T]:
+class MetadataProperty(Generic[T]):
     source: str
     property_name: str
     property_value: T

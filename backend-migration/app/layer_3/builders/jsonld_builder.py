@@ -19,6 +19,8 @@ class JSONLDBuilder(JSONLDBuilderBase):
                     result[property_name] = val.model_dump(mode='json')
                 else:
                     result[property_name] = val
+            else:
+                result[property_name] = None
         return result
 
 __all__ = ["JSONLDBuilder"]

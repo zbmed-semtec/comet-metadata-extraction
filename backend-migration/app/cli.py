@@ -16,7 +16,6 @@ def _print_json(data: Any) -> None:
     json.dump(safe_data, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
 
-
 def _extract_command(args: argparse.Namespace) -> None:
 
     initialize()
@@ -42,7 +41,6 @@ def _extract_command(args: argparse.Namespace) -> None:
     }
     _print_json(result)
 
-
 def _normalize_property_key(property_name: str) -> Tuple[str, str]:
     """
     Return a tuple of (jsonld_style, entity_style) keys for flexible matching.
@@ -60,7 +58,6 @@ def _normalize_property_key(property_name: str) -> Tuple[str, str]:
         jsonld_key = property_name.replace("_", ":")
     return jsonld_key, entity_key
 
-
 def _collect_property_results(
     schema: str,
     code_url: str,
@@ -71,50 +68,19 @@ def _collect_property_results(
     jsonld_key, _ = _normalize_property_key(property_name)
 
     matches: List[Dict[str, Any]] = []
-
-    if schema == "masmp":
-        profiles = ("masmp:SoftwareSourceCode", "masmp:SoftwareApplication")
-        skip_keys = {"@context", "@type"}
-
-        for profile in profiles:
-            profile_data = jsonld_document.get(profile)
-            if not isinstance(profile_data, dict):
-                continue
-
-            value = None
-            if jsonld_key in profile_data and jsonld_key not in skip_keys:
-                value = profile_data[jsonld_key]
-
-            if value is None:
-                continue
-
-            meta_for_profile = enriched_metadata.get(profile, {})
-            meta = meta_for_profile.get(jsonld_key, {}) if isinstance(meta_for_profile, dict) else {}
-
-            matches.append(
-                {
-                    "profile": profile,
-                    "property": jsonld_key,
-                    "value": value,
-                    "source": meta.get("source"),
-                    "confidence": meta.get("confidence"),
-                    "category": meta.get("category"),
-                }
-            )
-    else:  # CODEMETA schema – single JSON-LD document
-        value = jsonld_document.get(jsonld_key)
-        if value is not None:
-            meta = enriched_metadata.get(jsonld_key, {}) if isinstance(enriched_metadata, dict) else {}
-            matches.append(
-                {
-                    "profile": "SoftwareSourceCode",
-                    "property": jsonld_key,
-                    "value": value,
-                    "source": meta.get("source"),
-                    "confidence": meta.get("confidence"),
-                    "category": meta.get("category"),
-                }
-            )
+    value = jsonld_document.get(jsonld_key)
+    if value is not None:
+        meta = enriched_metadata.get(jsonld_key, {}) if isinstance(enriched_metadata, dict) else {}
+        matches.append(
+            {
+                "profile": jsonld_document.get("@type", schema),
+                "property": jsonld_key,
+                "value": value,
+                "source": meta.get("source"),
+                "confidence": meta.get("confidence"),
+                "category": meta.get("category"),
+            }
+        )
 
     return {
         "schema": schema,
@@ -123,12 +89,11 @@ def _collect_property_results(
         "matches": matches,
     }
 
-
 def _extract_property_command(args: argparse.Namespace) -> None:
 
     jsonld_document, enriched = run_extraction(
         repo_url=args.url,
-        schema=args.schema,
+        schema_name=args.schema,
         access_token=args.token,
         with_enrichment=True,
         schema_class=args.schema_class,
@@ -162,7 +127,6 @@ def _extract_property_command(args: argparse.Namespace) -> None:
     }
     _print_json(output)
 
-
 def _fairness_command(args: argparse.Namespace) -> None:
     """
     Compute a FAIRness report for a repository and print JSON.
@@ -182,13 +146,12 @@ def _fairness_command(args: argparse.Namespace) -> None:
     }
     _print_json(result)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="comet-rs",
         description=(
-            "Extract masmp/CODEMETA metadata (and per-property sources) "
-            "from code repositories."
+            "Extract metadata (and per-property sources) "
+            "from code repositories, for any supported schema."
         ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -201,14 +164,12 @@ def main() -> None:
     extract_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     extract_parser.add_argument(
         "schema",
-        choices=["masmp", "CODEMETA"],
-        help="Schema to analyze against.",
+        help="Schema to analyze against (e.g. masmp, CODEMETA).",
     )
     extract_parser.add_argument(
         "--schema-class",
-        choices=["SoftwareSourceCode", "SoftwareApplication"],
-        default="SoftwareSourceCode",
-        help="Schema class to use (default: SoftwareSourceCode).",
+        default="SoftwareApplication",
+        help="Schema class to use (default: SoftwareApplication).",
     )
     extract_parser.add_argument(
         "--token",
@@ -226,7 +187,7 @@ def main() -> None:
     )
     extract_parser.set_defaults(func=_extract_command)
 
-    # comet-rs extract_property {GIT_URL} {PROPERTY_NAME} [--schema masmp|CODEMETA]
+    # comet-rs extract_property {GIT_URL} {PROPERTY_NAME} [--schema SCHEMA]
     extract_prop_parser = subparsers.add_parser(
         "extract_property",
         help=(
@@ -244,9 +205,13 @@ def main() -> None:
     )
     extract_prop_parser.add_argument(
         "--schema",
-        choices=["masmp", "CODEMETA"],
         default="masmp",
         help="Schema to use (default: masmp).",
+    )
+    extract_prop_parser.add_argument(
+        "--schema-class",
+        default="SoftwareApplication",
+        help="Schema class to use (default: SoftwareApplication).",
     )
     extract_prop_parser.add_argument(
         "--token",
@@ -262,8 +227,7 @@ def main() -> None:
     fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     fairness_parser.add_argument(
         "schema",
-        choices=["masmp", "CODEMETA"],
-        help="Schema to analyze against.",
+        help="Schema to analyze against (e.g. masmp, CODEMETA).",
     )
     fairness_parser.add_argument(
         "--token",
@@ -287,7 +251,5 @@ def main() -> None:
         print(str(e), file=sys.stderr)
         sys.exit(1)
 
-
 if __name__ == "__main__":
     main()
-

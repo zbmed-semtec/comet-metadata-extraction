@@ -1,0 +1,284 @@
+id: https://connoss-project.github.io/
+name: connoss
+title: Connoss (LinkML)
+description: >-
+  ConnOSS schema LinkML version
+version: 0.0.1
+
+prefixes:
+  linkml:    https://w3id.org/linkml/
+  sdo:       https://schema.org/
+  cm:  https://codemeta.github.io/terms/
+  spdx:      https://spdx.org/licenses/
+  xsd:       http://www.w3.org/2001/XMLSchema#
+
+default_prefix: schema
+default_range: string
+
+classes:
+  Software:
+    description:
+      The main class of the ConnOSS schema
+    slots:
+      - codeRepository
+      - codeSampleType
+      - programmingLanguage
+      - runtimePlatform
+      - targetProduct
+      # Properties from Thing -> CreativeWork -> SoftwareApplication
+      - applicationCategory
+      - applicationSubCategory
+      - applicationSuite
+      - availableOnDevice
+      - countriesNotSupported
+      - countriesSupported
+      - downloadUrl
+      - featureList
+      - fileSize
+      - installUrl
+      - memoryRequirements
+      - operatingSystem
+      - permissions
+      - processorRequirements
+      - releaseNotes
+      - screenshot
+      - softwareAddOn
+      - softwareHelp
+      - softwareRequirements
+      - softwareVersion
+      - storageRequirements
+      - supportingData
+      # Properties from Thing -> CreativeWork
+      - author
+      - citation
+      - contributor
+      - copyrightHolder
+      - copyrightYear
+      - dateCreated
+      - dateModified
+      - datePublished
+      - encodingFormat
+      - funder
+      - hasPart
+      - isAccessibleForFree
+      - isPartOf
+      - keywords
+      - license
+      - publisher
+      - review
+      - sponsor
+      # Properties from Thing
+      - description
+      - identifier
+      - name
+      - sameAs
+      - url
+      # Properties outside the hierarchy from Thing -> CreativeWork -> WebPage
+      - relatedLink
+      # Additional properties from Codemeta Thing -> CreativeWork -> Codemeta:Software
+      - buildInstructions
+      - continuousIntegration
+      - developmentStatus
+      - embargoEndDate
+      - hasSourceCode
+      - isSourceCodeOf
+      - issueTracker
+      - readme
+      - referencePublication
+      # Added in V4
+      - relatedSoftware
+      - contactPoint
+      - creditText
+      - alternateName
+      # extension set
+      - intendedUse 
+      - applicationDomain
+      - legalConsiderations
+      - ethicalSocialConsiderations
+      - archivedAt 
+      - conditionsOfAccess
+      - documentation
+      - developerDocumentation 
+      - userDocumentation
+      - softwareInterface
+      - testedWith
+      - implementsSpecification
+      - softwareContainer
+      - input 
+      - output
+      - partOfCommunity
+      - latestRelease
+      - latestReleaseVersion
+
+slots:
+  codeRepository:
+    slot_uri: sdo:codeRepository
+  codeSampleType:
+    slot_uri: sdo:codeSampleType
+  programmingLanguage:
+    slot_uri: sdo:programmingLanguage
+  runtimePlatform:
+    slot_uri: sdo:runtimePlatform
+  targetProduct:
+    slot_uri: sdo:targetProduct
+  # Properties from Thing -> CreativeWork -> SoftwareApplication:
+  applicationCategory:
+    slot_uri: sdo:applicationCategory
+  applicationSubCategory:
+    slot_uri: sdo:applicationSubCategory
+  applicationSuite:
+    slot_uri: sdo:applicationSuite
+  availableOnDevice:
+    slot_uri: sdo:availableOnDevice
+  countriesNotSupported:
+    slot_uri: sdo:countriesNotSupported
+  countriesSupported:
+    slot_uri: sdo:countriesSupported
+  downloadUrl:
+    slot_uri: sdo:downloadUrl
+  featureList:
+    slot_uri: sdo:featureList
+  fileSize:
+    slot_uri: sdo:fileSize
+  installUrl:
+    slot_uri: sdo:installUrl
+  memoryRequirements:
+    slot_uri: sdo:memoryRequirements
+  operatingSystem:
+    slot_uri: sdo:operatingSystem
+  permissions:
+    slot_uri: sdo:permissions
+  processorRequirements:
+    slot_uri: sdo:processorRequirements
+  releaseNotes:
+    slot_uri: sdo:releaseNotes
+  screenshot:
+    slot_uri: sdo:screenshot
+  softwareAddOn:
+    slot_uri: sdo:softwareAddOn
+  softwareHelp:
+    slot_uri: sdo:softwareHelp
+  softwareRequirements:
+    slot_uri: sdo:softwareRequirements
+  softwareVersion:
+    slot_uri: sdo:softwareVersion
+  storageRequirements:
+    slot_uri: sdo:storageRequirements
+  supportingData:
+    slot_uri: sdo:supportingData
+  # Properties from Thing -> CreativeWork:
+  author:
+    slot_uri: sdo:author
+  citation:
+    slot_uri: sdo:citation
+  contributor:
+    slot_uri: sdo:contributor
+  copyrightHolder:
+    slot_uri: sdo:copyrightHolder
+  copyrightYear:
+    slot_uri: sdo:copyrightYear
+  dateCreated:
+    slot_uri: sdo:dateCreated
+  dateModified:
+    slot_uri: sdo:dateModified
+  datePublished:
+    slot_uri: sdo:datePublished
+  encodingFormat:
+    slot_uri: sdo:encodingFormat
+  funder:
+    slot_uri: sdo:funder
+  hasPart:
+    slot_uri: sdo:hasPart
+  isAccessibleForFree:
+    slot_uri: sdo:isAccessibleForFree
+  isPartOf:
+    slot_uri: sdo:isPartOf
+  keywords:
+    slot_uri: sdo:keywords
+  license:
+    slot_uri: sdo:license
+  publisher:
+    slot_uri: sdo:publisher
+  review:
+    slot_uri: sdo:review
+  sponsor:
+    slot_uri: sdo:sponsor
+  # Properties from Thing:
+  description:
+    slot_uri: sdo:description
+  identifier:
+    slot_uri: sdo:identifier
+  name:
+    slot_uri: sdo:name
+  sameAs:
+    slot_uri: sdo:sameAs
+  url:
+    slot_uri: sdo:url
+  # Properties outside the hierarchy from Thing -> CreativeWork -> WebPage:
+  relatedLink:
+    slot_uri: sdo:relatedLink
+  # Additional properties from Codemeta Thing -> CreativeWork -> Codemeta:Software:
+  buildInstructions:
+    slot_uri: codemeta:buildInstructions
+  continuousIntegration:
+    slot_uri: codemeta:continuousIntegration
+  developmentStatus:
+    slot_uri: codemeta:developmentStatus
+  embargoEndDate:
+    slot_uri: codemeta:embargoEndDate
+  hasSourceCode:
+    slot_uri: codemeta:hasSourceCode
+  isSourceCodeOf:
+    slot_uri: codemeta:isSourceCodeOf
+  issueTracker:
+    slot_uri: codemeta:issueTracker
+  readme:
+    slot_uri: codemeta:readme
+  referencePublication:
+    slot_uri: codemeta:referencePublication
+  # Added in V4:
+  relatedSoftware:
+    slot_uri: sdo:relatedSoftware
+  contactPoint:
+    slot_uri: sdo:contactPoint
+  creditText:
+    slot_uri: sdo:creditText
+  alternateName:
+    slot_uri: sdo:alternateName
+  # extension set
+  intendedUse:
+    slot_uri: sdo:intendedUse 
+  applicationDomain:
+    slot_uri: sdo:applicationDomain
+  legalConsiderations:
+    slot_uri: sdo:legalConsiderations
+  ethicalSocialConsiderations:
+    slot_uri: sdo:ethicalSocialConsiderations
+  archivedAt :
+    slot_uri: sdo:archivedAt 
+  conditionsOfAccess:
+    slot_uri: sdo:conditionsOfAccess
+  documentation:
+    slot_uri: sdo:documentation
+  developerDocumentation :
+    slot_uri: cm:developerDocumentation 
+  userDocumentation:
+    slot_uri: cm:userDocumentation
+  softwareInterface:
+    slot_uri: sdo:softwareInterface
+  testedWith:
+    slot_uri: sdo:testedWith
+  implementsSpecification:
+    slot_uri: sdo:implementsSpecification
+  softwareContainer:
+    slot_uri: sdo:softwareContainer
+  input :
+    slot_uri: sdo:input 
+  output:
+    slot_uri: sdo:output
+  partOfCommunity:
+    slot_uri: sdo:partOfCommunity
+  latestRelease:
+    slot_uri: sdo:latestRelease
+  latestReleaseVersion:
+    slot_uri: cm:latestReleaseVersion
