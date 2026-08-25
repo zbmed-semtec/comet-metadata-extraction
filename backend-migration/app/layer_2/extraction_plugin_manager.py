@@ -17,7 +17,7 @@ class ExtractionPluginManager(PluginManager):
                 helper.add(plugin_class.name)
                 self.metadata_providers[property] = helper
                 self.object_registry[plugin_class.name] = self._instantiate_plugin(plugin_class)
-        print("registered", plugin_class)
+        # print("registered", plugin_class)
 
     def select(self, schema_property: SchemaPropery, context: ExtractionContext) -> set[ExtractionPlugin]:
         result = set()
@@ -27,7 +27,8 @@ class ExtractionPluginManager(PluginManager):
             if instance.applicable(context):
                 result.add(instance)
         if len(result) < 1:
-            raise Warning(f"missing plugin to extract '{uri}'!")
+            pass
+            # raise Warning(f"missing plugin to extract '{uri}'!")
         return result
 
     def extract(self, schema_property: SchemaPropery, context: ExtractionContext, state: ExtractionState) -> ExtractionState:
