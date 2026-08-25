@@ -1,5 +1,4 @@
 from app.layer_3.plugins.codeberg.codeberg_base_extractor import CodebergBaseExtractor
-from app.layer_3.plugins.shared.collection import GitPlatformNameExtractor
 from app.layer_3.plugins.llm.collection import LlmNameExtractor
 
 class CodebergLlmNameExtractor(LlmNameExtractor, CodebergBaseExtractor):
