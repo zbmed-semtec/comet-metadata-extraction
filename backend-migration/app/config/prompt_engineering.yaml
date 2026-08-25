@@ -1,0 +1,71 @@
+version: 1
+system_prompts:
+  json_only: "Return valid JSON only."
+
+retrieval:
+  property_queries:
+    license: ["license", "licensing", "copyright", "spdx"]
+    installation: ["installation", "install", "pip", "conda", "requirements", "setup"]
+    contact: ["contact", "email", "maintainer", "author"]
+    contributors: ["contributors", "contributor", "authors", "maintainers", "team", "credits", "@", "github.com"]
+    links: ["paper", "publication", "citation", "arxiv", "doi", "docs", "link", "url"]
+    description: ["overview", "about", "purpose", "project", "toolkit", "library", "framework", "features", "introduction"]
+
+  license_patterns:
+    - pattern: "bsd\\s*[- ]?3\\s*[- ]?clause|bsd-3-clause"
+      value: "BSD-3-Clause"
+    - pattern: "bsd\\s*[- ]?2\\s*[- ]?clause|bsd-2-clause"
+      value: "BSD-2-Clause"
+    - pattern: "\\bmit\\b(?:\\s+license)?"
+      value: "MIT"
+    - pattern: "apache\\s*2\\.0|apache-2\\.0|apache license"
+      value: "Apache-2.0"
+    - pattern: "gpl\\s*v?3|gnu\\s+general\\s+public\\s+license\\s*v?3"
+      value: "GPL-3.0"
+    - pattern: "gpl\\s*v?2|gnu\\s+general\\s+public\\s+license\\s*v?2"
+      value: "GPL-2.0"
+    - pattern: "lgpl\\s*v?3|lesser\\s+general\\s+public\\s+license\\s*v?3"
+      value: "LGPL-3.0"
+    - pattern: "mpl\\s*2\\.0|mozilla\\s+public\\s+license\\s*2\\.0"
+      value: "MPL-2.0"
+
+property_prompts:
+  default:
+    rules: "Return concise value and evidence quote if available."
+    expected_value_shape: "null if unknown"
+    prompt_template: |
+      You are extracting '{property_name}' from repository README chunks.
+      Rules: {rule_hint}
+      Expected value shape: {schema_hint}
+
+      No guessing. Return JSON only with keys: value, evidence, confidence.
+      - value: extracted value or null
+      - evidence: exact short quote from context or null
+      - confidence: number from 0 to 1
+
+      Context:
+      {context}
+
+  license:
+    rules: "Return normalized SPDX license and exact evidence quote when possible."
+    expected_value_shape: "normalized SPDX-style string if explicit, else null"
+
+  installation:
+    rules: "Return short installation instruction summary or code snippet, else null."
+    expected_value_shape: "short installation instruction summary or code snippet, else null"
+
+  contact:
+    rules: "Return email or contact link, else null."
+    expected_value_shape: "email or contact link, else null"
+
+  contributors:
+    rules: "Return value as list of objects [{name: string, github_url: string|null}]."
+    expected_value_shape: "list of contributors with name/github_url if available, else null"
+
+  links:
+    rules: "Return value as list of objects [{title, url, relevance, is_working, status_code}], else null."
+    expected_value_shape: "list of relevant links as objects, else null"
+
+  description:
+    rules: "Return factual concise repository description from evidence only."
+    expected_value_shape: "one or two concise lines describing what the repository does, else null"
