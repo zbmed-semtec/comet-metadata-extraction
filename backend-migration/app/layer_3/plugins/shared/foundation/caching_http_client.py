@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from time import sleep
 import requests
-from app.layer_3.plugins.shared.named_stateful_singleton import NamedStatefulSingleton
+from app.layer_3.plugins.shared.foundation.named_stateful_singleton import NamedStatefulSingleton
 from app.layer_3.steps.contracts import ExtractionState, ExtractionContext
 
 

@@ -3,9 +3,9 @@ import datetime
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_files
-from app.layer_3.plugins.shared.wayback_client import WaybackClient
-from app.layer_3.plugins.shared.software_heritage_client import SoftwareHeritageClient
-from app.layer_3.plugins.shared.open_alex_client import OpenAlexClient
+from app.layer_3.plugins.shared.external_services.wayback_client import WaybackClient
+from app.layer_3.plugins.shared.external_services.software_heritage_client import SoftwareHeritageClient
+from app.layer_3.plugins.shared.external_services.open_alex_client import OpenAlexClient
 
 class GitPlatformNameExtractor(GitPlatformBaseExtractor):
     """schema:name"""
