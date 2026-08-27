@@ -65,7 +65,6 @@ class SinglePropertyResponse(BaseModel):
     code_url: HttpUrl
     message: str
     property: str
-    extracted_at: str
     results: List[SinglePropertyItem]
 
     class Config:

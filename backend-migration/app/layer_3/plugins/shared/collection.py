@@ -444,12 +444,9 @@ class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
     extracts = {'https://schema.org/contributor'}
 
     def extract(self, context, state):
-        try:
-            result = self.get_client(context, state).get_contributors()
-            contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
-            state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
-        except:
-            pass
+        result = self.get_client(context, state).get_contributors()
+        contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
+        state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
         return state
 
 class GitPlatformSoftwareVersionExtractor(GitPlatformBaseExtractor):
@@ -622,11 +619,8 @@ class GitPlatformLicenseCopyrightHolderExtractor(GitPlatformBaseExtractor):
             if holder:
                 state.metadata_collector.collect("License File", "https://schema.org/copyrightHolder", holder.strip(), 0.85)
             if year:
-                try:
-                    year = int(year)
-                    state.metadata_collector.collect("License File", "https://schema.org/copyrightYear", year, 0.85)
-                except:
-                    pass
+                year = int(year)
+                state.metadata_collector.collect("License File", "https://schema.org/copyrightYear", year, 0.85)
                 
         return state 
     

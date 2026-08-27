@@ -49,51 +49,18 @@ def run_extraction(
     repo_url: str,
     schema_name: str,
     access_token: Optional[str],
-    with_enrichment: bool,
+    with_enrichment: bool = False,
     schema_class: str = "SoftwareSourceCode",
-) -> tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
-    """
-    Run metadata extraction once.
-    
-    Returns:
-        (jsonld_document, enriched_metadata or None)
-    """
-    use_case, collector = _create_extraction_use_case(
-    )
-
-    schema = _schema_registry.get(schema_name, schema_class)
-
-    result = use_case.execute(repo_url=repo_url, schema=schema, access_token=access_token)
-    jsonld_document = result.jsonld_document
-
-    if with_enrichment:
-        enriched = build_enriched_metadata(
-            collector,
-            schema,
-        )
-        return jsonld_document, enriched
-    return jsonld_document, None
-
-
-def run_extraction_with_progress(
-    repo_url: str,
-    schema_name: str,
-    access_token: Optional[str],
-    with_enrichment: bool,
     progress_callback: Optional[Callable[[str, str], None]] = None,
-    schema_class: str = "SoftwareSourceCode",
+    single_property: Optional[str] = None,
 ) -> tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """
-    Run metadata extraction with optional progress callbacks.
-
-    progress_callback(step_id, status) is called for each step; step_id is one of
-    platform, file_parsing, external_data, llm, jsonld_build; status is "started" or "completed".
+    Core extraction runner shared by all extraction entry points.
 
     Returns:
         (jsonld_document, enriched_metadata or None)
     """
-    use_case, collector = _create_extraction_use_case(
-    )
+    use_case, collector = _create_extraction_use_case()
 
     schema = _schema_registry.get(schema_name, schema_class)
 
@@ -102,46 +69,12 @@ def run_extraction_with_progress(
         schema=schema,
         access_token=access_token,
         progress_callback=progress_callback,
+        single_property=single_property,
     )
     jsonld_document = result.jsonld_document
 
     if with_enrichment:
-        enriched = build_enriched_metadata(
-            collector,
-            schema,
-        )
-        return jsonld_document, enriched
-    return jsonld_document, None
-
-
-def run_single_property_extraction(
-    repo_url: str,
-    schema_name: str,
-    access_token: Optional[str],
-    property_name: str,
-    schema_class: str = "SoftwareSourceCode",
-    with_enrichment: bool = True,
-) -> tuple[str, List[Dict[str, Any]]]:
-    """
-    Run extraction with enrichment and project down to a single property's
-    value, source, and confidence.
-
-    Returns:
-        (extracted_at_iso, [ {profile, value, source, confidence}, ... ])
-    """
-    use_case, collector = use_case, collector = _create_extraction_use_case(
-        )
-
-    schema = _schema_registry.get(schema_name, schema_class)
-
-    result = use_case.execute(repo_url=repo_url, schema=schema, access_token=access_token, single_property=property_name)
-    jsonld_document = result.jsonld_document
-
-    if with_enrichment:
-        enriched = build_enriched_metadata(
-            collector,
-            schema,
-        )
+        enriched = build_enriched_metadata(collector, schema)
         return jsonld_document, enriched
     return jsonld_document, None
 
