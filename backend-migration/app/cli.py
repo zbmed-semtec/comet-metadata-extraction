@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 
 from fastapi.encoders import jsonable_encoder
 
-from app.layer_4.services.metadata_service import run_extraction, initialize
+from app.layer_4.services.metadata_service import run_extraction, initialize, run_single_property_extraction
 from app.layer_4.services.fairness_service import run_fairness_assessment
 
 def _print_json(data: Any) -> None:
@@ -83,12 +83,14 @@ def _collect_property_results(
     }
 
 def _extract_property_command(args: argparse.Namespace) -> None:
-    jsonld_document, enriched = run_extraction(
+    initialize()
+    jsonld_document, enriched = run_single_property_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
         with_enrichment=True,
         schema_class=args.schema_class,
+        property_name=args.property,
     )
 
     result = _collect_property_results(

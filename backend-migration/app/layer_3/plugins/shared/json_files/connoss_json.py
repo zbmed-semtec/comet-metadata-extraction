@@ -331,7 +331,7 @@ class GitPlatformConnossExtractor(GitPlatformBaseExtractor):
             collector.collect(self.SOURCE, "https://codemeta.github.io/terms/readme", readmes, self.CONF)
 
         # schema:softwareVersion / schema:version
-        version_field = connoss.get("version")
+        version_field = connoss.get("softwareVersion") or connoss.get("version")
         if version_field:
             collector.collect(self.SOURCE, "https://schema.org/softwareVersion", version_field, self.CONF)
             collector.collect(self.SOURCE, "https://schema.org/version", version_field, self.CONF)
