@@ -1,3 +1,7 @@
+"""
+Extracts schema.org/codemeta properties from a repository's codemeta.json file, if present.
+"""
+
 import json
 import datetime
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor

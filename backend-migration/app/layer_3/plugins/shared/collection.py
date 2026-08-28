@@ -1,3 +1,12 @@
+"""
+Platform-agnostic extraction plugins for Git-hosted repositories.
+
+Each class extracts one schema.org/codemeta/maSMP property. These classes are abstract on their own (no client) -- each platform's collection.py mixes one of these with its concrete *BaseExtractor (e.g. GitHubBaseExtractor) to produce a runnable plugin.
+
+Where a property has multiple sources (API, CITATION.cff, BibTeX, README, OpenAlex), each is collected independently with its own confidence score;
+conflict resolution across sources happens later in merge_* steps.
+"""
+
 import re
 import datetime
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
@@ -6,6 +15,8 @@ from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_fi
 from app.layer_3.plugins.shared.wayback_client import WaybackClient
 from app.layer_3.plugins.shared.software_heritage_client import SoftwareHeritageClient
 from app.layer_3.plugins.shared.open_alex_client import OpenAlexClient
+from app.layer_3.plugins.shared.utils import parse_contributor_names
+
 
 class GitPlatformNameExtractor(GitPlatformBaseExtractor):
     """schema:name"""
@@ -439,19 +450,47 @@ class GitPlatformArchivedAtExtractor(GitPlatformBaseExtractor):
             state.metadata_collector.collect("SoftwareHeritage API", "https://schema.org/archivedAt", [softwareHeritageUrl], 0.95)
         return state
 
+
 class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
 
     extracts = {'https://schema.org/contributor'}
 
     def extract(self, context, state):
+        client = self.get_client(context, state)
+
+        # from platform API
         try:
-            result = self.get_client(context, state).get_contributors()
-            contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
-            state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
+            result = client.get_contributors()
+            if result:
+                contributors = [{'name': contributor['name'], 'email': email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
+                state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
         except:
             pass
+
+        # from CONTRIBUTORS.md (unstructured, lower confidence)
+        md_contributors = []
+        for file in client.get_contributors_candidate_files():
+            content = file.get_content()
+            if not content:
+                continue
+            for value in parse_contributor_names(content):
+                if value.startswith("@"):
+                    person = {
+                        "@type": "Person",
+                        "accountName": {
+                            "@type": "foaf:OnlineAccount",
+                            "url": f"https://github.com/{value[1:]}",
+                        },
+                    }
+                else:
+                    person = {"@type": "Person", "name": value}
+                md_contributors.append(person)
+        if md_contributors:
+            state.metadata_collector.collect("CONTRIBUTORS File", "https://schema.org/contributor", md_contributors, 0.7)
+
         return state
 
+    
 class GitPlatformSoftwareVersionExtractor(GitPlatformBaseExtractor):
     """schema:softwareVersion"""
 
