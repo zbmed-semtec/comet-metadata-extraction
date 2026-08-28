@@ -3,9 +3,9 @@ import datetime
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_files
-from app.layer_3.plugins.shared.wayback_client import WaybackClient
-from app.layer_3.plugins.shared.software_heritage_client import SoftwareHeritageClient
-from app.layer_3.plugins.shared.open_alex_client import OpenAlexClient
+from app.layer_3.plugins.shared.external_services.wayback_client import WaybackClient
+from app.layer_3.plugins.shared.external_services.software_heritage_client import SoftwareHeritageClient
+from app.layer_3.plugins.shared.external_services.open_alex_client import OpenAlexClient
 
 class GitPlatformNameExtractor(GitPlatformBaseExtractor):
     """schema:name"""
@@ -444,12 +444,9 @@ class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
     extracts = {'https://schema.org/contributor'}
 
     def extract(self, context, state):
-        try:
-            result = self.get_client(context, state).get_contributors()
-            contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
-            state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
-        except:
-            pass
+        result = self.get_client(context, state).get_contributors()
+        contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
+        state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
         return state
 
 class GitPlatformSoftwareVersionExtractor(GitPlatformBaseExtractor):
@@ -622,11 +619,8 @@ class GitPlatformLicenseCopyrightHolderExtractor(GitPlatformBaseExtractor):
             if holder:
                 state.metadata_collector.collect("License File", "https://schema.org/copyrightHolder", holder.strip(), 0.85)
             if year:
-                try:
-                    year = int(year)
-                    state.metadata_collector.collect("License File", "https://schema.org/copyrightYear", year, 0.85)
-                except:
-                    pass
+                year = int(year)
+                state.metadata_collector.collect("License File", "https://schema.org/copyrightYear", year, 0.85)
                 
         return state 
     

@@ -83,12 +83,14 @@ def _collect_property_results(
     }
 
 def _extract_property_command(args: argparse.Namespace) -> None:
+    initialize()
     jsonld_document, enriched = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
         with_enrichment=True,
         schema_class=args.schema_class,
+        single_property=args.property,
     )
 
     result = _collect_property_results(
