@@ -3,7 +3,8 @@ metadata fields from a repository's Codeberg API data, CITATION.cff files,
 README files, and license files."""
 
 from app.layer_3.plugins.codeberg.codeberg_base_extractor import CodebergBaseExtractor
-from app.layer_3.plugins.shared.git_platform_codemeta_extractor import GitPlatformCodemetaExtractor
+from app.layer_3.plugins.shared.json_files.codemeta_json import GitPlatformCodemetaExtractor
+from app.layer_3.plugins.shared.json_files.connoss_json import GitPlatformConnossExtractor
 from app.layer_3.plugins.shared.collection import (GitPlatformDescriptionExtractor
 ,GitPlatformNameExtractor
 ,GitPlatformUrlExtractor
@@ -185,3 +186,7 @@ class CodebergDocumentationExtractor(GitPlatformDocumentationExtractor, Codeberg
 class CodebergCodemetaExtractor(GitPlatformCodemetaExtractor, CodebergBaseExtractor):
     """extracts metadata from a repository's codemeta.json file"""
     name = "codeberg.codemeta_extractor"
+
+class CodebergConnossExtractor(GitPlatformConnossExtractor, CodebergBaseExtractor):
+    """extracts metadata from a repository's connoss.json file"""
+    name = "codeberg.connoss_extractor"

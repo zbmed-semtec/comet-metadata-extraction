@@ -1,4 +1,4 @@
-from app.layer_3.plugins.shared.caching_http_client import CachingHttpClient
+from app.layer_3.plugins.shared.foundation.caching_http_client import CachingHttpClient
 from app.layer_3.steps.contracts import ExtractionState, ExtractionContext
 
 class WaybackClient(CachingHttpClient):
