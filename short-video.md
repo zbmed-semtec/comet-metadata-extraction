@@ -1,3 +1,1 @@
-<video width="320" height="240" controls>
-  <source src="./CoMET-1-min-video-480.mp4" type="video/mp4">
-</video>
+[CoMET short video](https://github.com/user-attachments/assets/ac113808-1ede-4fc0-8226-f455558e755e)
