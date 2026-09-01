@@ -214,20 +214,20 @@ def main() -> None:
     extract_prop_parser.set_defaults(func=_extract_property_command)
 
     # comet-rs fairness {GIT_URL} {SCHEMA}
-    fairness_parser = subparsers.add_parser(
-        "fairness",
-        help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
-    )
-    fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
-    fairness_parser.add_argument(
-        "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
-    )
-    fairness_parser.add_argument(
-        "--token",
-        help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
-    )
-    fairness_parser.set_defaults(func=_fairness_command)
+    # fairness_parser = subparsers.add_parser(
+    #     "fairness",
+    #     help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
+    # )
+    # fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
+    # fairness_parser.add_argument(
+    #     "schema",
+    #     help="Schema to analyze against (e.g. masmp, CODEMETA).",
+    # )
+    # fairness_parser.add_argument(
+    #     "--token",
+    #     help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
+    # )
+    # fairness_parser.set_defaults(func=_fairness_command)
 
     args = parser.parse_args()
 
