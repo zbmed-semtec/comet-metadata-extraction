@@ -8,7 +8,7 @@ version: 0.0.1
 prefixes:
   linkml:    https://w3id.org/linkml/
   sdo:       https://schema.org/
-  cm:  https://codemeta.github.io/terms/
+  cm:        https://codemeta.github.io/terms/
   spdx:      https://spdx.org/licenses/
   xsd:       http://www.w3.org/2001/XMLSchema#
 
@@ -219,23 +219,23 @@ slots:
     slot_uri: sdo:relatedLink
   # Additional properties from Codemeta Thing -> CreativeWork -> Codemeta:Software:
   buildInstructions:
-    slot_uri: codemeta:buildInstructions
+    slot_uri: cm:buildInstructions
   continuousIntegration:
-    slot_uri: codemeta:continuousIntegration
+    slot_uri: cm:continuousIntegration
   developmentStatus:
-    slot_uri: codemeta:developmentStatus
+    slot_uri: cm:developmentStatus
   embargoEndDate:
-    slot_uri: codemeta:embargoEndDate
+    slot_uri: cm:embargoEndDate
   hasSourceCode:
-    slot_uri: codemeta:hasSourceCode
+    slot_uri: cm:hasSourceCode
   isSourceCodeOf:
-    slot_uri: codemeta:isSourceCodeOf
+    slot_uri: cm:isSourceCodeOf
   issueTracker:
-    slot_uri: codemeta:issueTracker
+    slot_uri: cm:issueTracker
   readme:
-    slot_uri: codemeta:readme
+    slot_uri: cm:readme
   referencePublication:
-    slot_uri: codemeta:referencePublication
+    slot_uri: cm:referencePublication
   # Added in V4:
   relatedSoftware:
     slot_uri: sdo:relatedSoftware

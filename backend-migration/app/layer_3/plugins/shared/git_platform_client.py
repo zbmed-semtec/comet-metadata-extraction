@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 import yaml
 
-from app.layer_3.plugins.shared.caching_http_client import CachingHttpClient
+from app.layer_3.plugins.shared.foundation.caching_http_client import CachingHttpClient
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.shared.bibtex import parse_bibtex

@@ -1,10 +1,13 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18837374.svg)](https://doi.org/10.5281/zenodo.18837374) 
+![Status](https://img.shields.io/badge/repo_status-Active-green)
+
 <p align="center">
   <img src="docs/img/background.gif" width="100%">
 </p>
 
 # Code Metadata Extraction Toolkit for Research Software (CoMET-RS)
 
-This project is designed to automate the extraction of metadata from GitHub and GitLab repositories to generate a **Machine-Actionable Software Management Plan (SMP)**. It consists of two main components:
+This project is designed to automate the extraction of metadata from GitHub and GitLab repositories to generate a **machine-actionable** metadata file in JSON-LD that can be included in the repository or use by metadata aggregators and curators. It consists of two main components:
 
 1. **Backend** - A FastAPI-based service built with **Clean Architecture** principles that extracts metadata from GitHub, GitLab, and external sources (OpenAlex, Wayback Machine). The backend follows a layered architecture with clear separation of concerns: domain logic, use cases, adapters, and API endpoints.
 2. **Frontend** - A modern **Nuxt 3** application with Vue 3 and TypeScript, providing an intuitive user interface to interact with the metadata extraction service. Features include platform selection, repository input, and comprehensive metadata visualization.

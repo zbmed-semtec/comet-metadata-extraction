@@ -33,6 +33,7 @@ class ExtractionState:
     """
     metadata_collector: MetadataCollector 
     data: dict[str, Any] = field(default_factory=dict)
+    errors : dict[str, Exception] = field(default_factory=dict)
 
 
 class ExtractionStep(ABC):
