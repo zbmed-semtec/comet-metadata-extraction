@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import sys
 from dataclasses import asdict
@@ -9,6 +10,9 @@ from fastapi.encoders import jsonable_encoder
 
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
+
+logger = logging.getLogger(__name__)
+
 
 def _print_json(data: Any) -> None:
     """Print JSON-safe data to stdout."""
@@ -106,6 +110,7 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             f"No matches found for property '{args.property}' "
             f"in schema '{args.schema}' for URL '{args.url}'."
         )
+        logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)
 
@@ -237,6 +242,7 @@ def main() -> None:
     try:
         args.func(args)
     except Exception as e:
+        logger.exception("comet-rs command failed")
         print(str(e), file=sys.stderr)
         sys.exit(1)
 

@@ -1,8 +1,10 @@
-
+import logging
 from pathlib import Path
 from linkml_runtime import SchemaView
 from app.layer_1.schemas.base_schema_registry import BaseSchemaRegistry
 from app.layer_3.schemas.linkml.linkml_schema import LinkMlSchema
+
+logger = logging.getLogger(__name__)
 
 class LinkMlSchemaRegistry(BaseSchemaRegistry):
     def __init__(self):
@@ -23,8 +25,8 @@ class LinkMlSchemaRegistry(BaseSchemaRegistry):
                     schema = LinkMlSchema(view, class_name)
                     self.schemas[name] = schema
                 loaded.append(name)
-            except Exception as e:
-                print(f"Error loading schema from {path}: {e}")
+            except Exception:
+                logger.exception("Error loading schema from %s", path)
 
         return loaded
 

@@ -1,14 +1,16 @@
+import logging
 from abc import ABC, abstractmethod
 from time import sleep
 import requests
 from app.layer_3.plugins.shared.foundation.named_stateful_singleton import NamedStatefulSingleton
 from app.layer_3.steps.contracts import ExtractionState, ExtractionContext
 
+logger = logging.getLogger(__name__)
+
 
 class FetchError(Exception):
     """Raised when an HTTP GET request fails after all retries are exhausted."""
     pass
-
 
 def fetchFunction(
     url: str,
@@ -32,13 +34,19 @@ def fetchFunction(
             return response
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as exc:
             last_exception = exc
-            print(f"[fetchFunction] transient error on attempt {attempt}/{retries} for url: {url} ({exc})")
+            logger.warning(
+                "transient error on attempt %d/%d for url: %s (%s)",
+                attempt, retries, url, exc,
+            )
         except requests.exceptions.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             # Retry on server errors (5xx); don't retry on client errors (4xx).
             if status is not None and 500 <= status < 600:
                 last_exception = exc
-                print(f"[fetchFunction] server error {status} on attempt {attempt}/{retries} for url: {url}")
+                logger.warning(
+                    "server error %s on attempt %d/%d for url: %s",
+                    status, attempt, retries, url,
+                )
             else:
                 raise
 
@@ -46,7 +54,6 @@ def fetchFunction(
             sleep(min(2 ** (attempt - 1), 8))  # simple exponential backoff, capped
 
     raise FetchError(f"Failed to fetch {url} after {retries} attempts") from last_exception
-
 
 class CachingHttpClient(NamedStatefulSingleton, ABC):
     """Base client providing HTTP request caching functionality."""
