@@ -1,5 +1,6 @@
 import re
 import datetime
+from app.layer_3.plugins.shared.person import Person
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_files
@@ -111,22 +112,23 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
         for cff in citations:
             authors = []
             for cffAuthor in cff.get("authors", []):
-                person = {"@type": "Person"}
+                person = Person()
                 if "family-names" in cffAuthor:
-                    person["familyName"] = cffAuthor["family-names"]
+                    person.familyName = cffAuthor["family-names"]
                 if "given-names" in cffAuthor:
-                    person["givenName"] = cffAuthor["given-names"]
+                    person.givenName = cffAuthor["given-names"]
                 if "orcid" in cffAuthor:
-                    person["@id"] = cffAuthor["orcid"]
+                    person.url = cffAuthor["orcid"]
                 if 'name' in cffAuthor:
-                    person["name"] = cffAuthor["name"]
-                authors.append(person)
+                    person.name = cffAuthor["name"]
+                authors.append(person.toJsonLdDict())
             if len(authors) > 0:
                 state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.85)
-        
+
         # Query OpenAlex
         for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
             authors = OpenAlexClient.get_or_create(context, state).get_authors(doi)
+            authors = [author.toJsonLdDict() for author in authors]
             if authors:
                 state.metadata_collector.collect("OpenAlex", "https://schema.org/author", authors, 0.95)
 
@@ -142,25 +144,26 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
                 if not entry:
                     continue
 
-                person = {"@type": "Person"}
+                person = Person()
                 if "," in entry:
                     last, given = entry.split(",", 1)
                     last, given = last.strip(), given.strip()
                     if last:
-                        person["familyName"] = last
+                        person.familyName = last
                     if given:
-                        person["givenName"] = given
+                        person.givenName = given
                 else:
-                    person["name"] = entry
+                    person.name = entry
 
-                if len(person) > 1:
-                    persons.append(person)
+                # Check if person has any meaningful field set
+                if any([person.name, person.givenName, person.familyName]):
+                    persons.append(person.toJsonLdDict())
 
             if persons:
                 state.metadata_collector.collect(
                     "BibTex", "https://schema.org/author", persons, 0.85
                 )
-                
+
         return state
 
 class GitPlatformLicenseExtractor(GitPlatformBaseExtractor):
@@ -444,8 +447,8 @@ class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
     extracts = {'https://schema.org/contributor'}
 
     def extract(self, context, state):
-        result = self.get_client(context, state).get_contributors()
-        contributors = [{'name': contributor['name'], 'email':email, '@type': 'Person', "@context": 'https://schema.org'} for email, contributor in result.items() if email.lower() != 'total']
+        # extract from API
+        contributors = [person.toJsonLdDict() for person in self.get_client(context, state).get_contributors()]
         state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
         return state
 
@@ -641,7 +644,7 @@ class GitPlatformStorageReqExtractor(GitPlatformBaseExtractor):
                 if size / divider <= 1000:
                     break
                 divider *= 1024
-            sizeStr = f"{size / divider : .2f} {unit}"
+            sizeStr = f"{size / divider :.2f} {unit}"
             state.metadata_collector.collect('Platform API', "https://schema.org/storageRequirements", sizeStr, 0.95)
         return state
 

@@ -14,13 +14,14 @@ import base64
 import requests
 from urllib.parse import quote
 
+from app.layer_3.plugins.shared.person import Person
+from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
     RepositoryItem,
     RepositoryFile,
     FileNotFoundOnPlatformError,
 )
-from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 
 class GitLabRepositoryItem(RepositoryItem):
     @property
@@ -145,10 +146,17 @@ class GitLabClient(GitPlatformClient):
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}"
         return self._caching_get(url).json()
 
-    def get_contributors(self) -> list:
+    def get_contributors(self) -> list[Person]:
         """Fetches the list of contributors for the repository."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/contributors"
-        return self._caching_get(url).json()
+        response = self._caching_get(url).json()
+        result = []
+        for rawPerson in response:
+            name = rawPerson.get('name')
+            url  = rawPerson.get('html_url')
+            email = rawPerson.get('email')
+            result.append(Person(name=name, url=url, email=email))
+        return result
 
     def get_programming_languages(self) -> dict[str, float]:
         """Fetches the programming language breakdown for the project."""

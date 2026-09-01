@@ -2,6 +2,7 @@ import re
 import base64
 import requests
 
+from app.layer_3.plugins.shared.person import Person
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
@@ -104,10 +105,17 @@ class CodebergClient(GitPlatformClient):
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}"
         return self._caching_get(url).json()
 
-    def get_contributors(self) -> list:
+    def get_contributors(self) -> list[Person]:
         """Fetches the contributor activity data for the repository."""
         url = f'https://codeberg.org/{self.get_repository_owner()}/{self.get_repository_name()}/activity/contributors/data'
-        return self._caching_get(url).json()
+        response = self._caching_get(url).json()
+        result = []
+        for rawPerson in response:
+            name = rawPerson.get('name')
+            url  = rawPerson.get('html_url')
+            email = rawPerson.get('email')
+            result.append(Person(name=name, url=url, email=email))
+        return result
 
     def get_languages(self) -> dict:
         """Fetches the programming languages used in the repository."""
