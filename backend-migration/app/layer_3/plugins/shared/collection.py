@@ -133,13 +133,13 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
                     person["name"] = cffAuthor["name"]
                 authors.append(person)
             if len(authors) > 0:
-                state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.95)
         
         # Query OpenAlex
         for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
             authors = OpenAlexClient.get_or_create(context, state).get_authors(doi)
             if authors:
-                state.metadata_collector.collect("OpenAlex", "https://schema.org/author", authors, 0.95)
+                state.metadata_collector.collect("OpenAlex", "https://schema.org/author", authors, 0.90)
 
         # Extract from bibtex
         for bibtex in client.get_parsed_bibtex():
@@ -168,9 +168,7 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
                     persons.append(person)
 
             if persons:
-                state.metadata_collector.collect(
-                    "BibTex", "https://schema.org/author", persons, 0.85
-                )
+                state.metadata_collector.collect("BibTex", "https://schema.org/author", persons, 0.95)
                 
         return state
 
