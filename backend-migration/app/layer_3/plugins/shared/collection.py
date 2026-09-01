@@ -241,7 +241,7 @@ class GitPlatformIdentifierExtractor(GitPlatformBaseExtractor):
         # from CFF
         identifiers = list(client.get_dois_from_parsed_citaitons())
         if len(identifiers) > 0:
-            state.metadata_collector.collect("CFF File", "https://schema.org/identifier", identifiers, 0.85)
+            state.metadata_collector.collect("CFF File", "https://schema.org/identifier", identifiers, 0.9)
 
         # from README
         identifiers = list(client.get_dois_from_readmes())
@@ -320,7 +320,7 @@ class GitPlatformCitationExtractor(GitPlatformBaseExtractor):
                 title = preferred_citation.get("title")
                 if title:
                     citation_entry["title"] = str(title)
-                    state.metadata_collector.collect("CFF File", "https://schema.org/alternateName", str(title), 0.85)
+                    state.metadata_collector.collect("CFF File", "https://schema.org/alternateName", str(title), 0.90)
                 authors_field = preferred_citation.get("authors") or []
                 author_list: list[dict] = []
                 for author in authors_field:
@@ -340,14 +340,14 @@ class GitPlatformCitationExtractor(GitPlatformBaseExtractor):
                     author_list.append(person)
                 if author_list:
                     citation_entry["author"] = author_list
-                state.metadata_collector.collect("CFF File", "https://codemeta.github.io/terms/referencePublication", citation_entry, 0.85)
+                state.metadata_collector.collect("CFF File", "https://codemeta.github.io/terms/referencePublication", citation_entry, 0.90)
             else:
                 # If no preferred-citation, we can still try to extract a DOI from the CFF file
                 doi_value = cff.get("doi")
                 if doi_value:
                     doi_url = f"https://doi.org/{str(doi_value)}"
                     citation_entry = {"@type": "Software", "@id": doi_url}
-                    state.metadata_collector.collect("CFF File", "https://schema.org/citation", citation_entry, 0.85)
+                    state.metadata_collector.collect("CFF File", "https://schema.org/citation", citation_entry, 0.90)
 
             # Extract 'references' field from CFF (list of related works/citations)
             references_field = cff.get("references") or []
@@ -355,7 +355,7 @@ class GitPlatformCitationExtractor(GitPlatformBaseExtractor):
                 if not isinstance(ref, dict):
                     continue
                 ref_citation_entry = self._build_citation_entry(ref)
-                state.metadata_collector.collect("CFF File", "https://schema.org/citation", ref_citation_entry, 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/citation", ref_citation_entry, 0.90)
 
         # from bibtex
         for entry in client.get_parsed_bibtex():
@@ -380,7 +380,7 @@ class GitPlatformKeywordsExtractor(GitPlatformBaseExtractor):
         for cff in citations:
             keywords.extend(cff.get('keywords', []))
         if len(keywords) > 0:
-            state.metadata_collector.collect("CFF File", "https://schema.org/keywords", keywords, 0.85)
+            state.metadata_collector.collect("CFF File", "https://schema.org/keywords", keywords, 0.90)
         
         # Query OpenAlex
         for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
@@ -470,8 +470,8 @@ class GitPlatformSoftwareVersionExtractor(GitPlatformBaseExtractor):
         citations = client.get_parsed_citations()
         for citation in citations:
             if 'version' in citation:
-                state.metadata_collector.collect("CFF File", "https://schema.org/softwareVersion", citation['version'], 0.85)
-                state.metadata_collector.collect("CFF File", "https://schema.org/version", citation['version'], 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/softwareVersion", citation['version'], 0.90)
+                state.metadata_collector.collect("CFF File", "https://schema.org/version", citation['version'], 0.90)
         return state
 
 class GitPlatformHasSourceCodeExtractor(GitPlatformBaseExtractor):
@@ -637,14 +637,14 @@ class GitPlatformStorageReqExtractor(GitPlatformBaseExtractor):
         repo = client.get_repository()
         size = repo.get('size')
         if size:
-            size = float(size)
-            units = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+            size = float(size)  # size in KB from GitHub API
+            units = ['KB', 'MB', 'GB', 'TB', 'PB']
             divider = 1
             for unit in units:
-                if size / divider <= 1000:
+                if size / divider < 1024:
                     break
                 divider *= 1024
-            sizeStr = f"{size / divider :.2f} {unit}"
+            sizeStr = f"{size / divider:.2f} {unit}"
             state.metadata_collector.collect('Platform API', "https://schema.org/storageRequirements", sizeStr, 0.95)
         return state
 

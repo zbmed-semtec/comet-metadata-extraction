@@ -110,9 +110,16 @@ class CodebergClient(GitPlatformClient):
         url = f'https://codeberg.org/{self.get_repository_owner()}/{self.get_repository_name()}/activity/contributors/data'
         response = self._caching_get(url).json()
         result = []
-        for rawPerson in response:
+        for key, rawPerson in response.items():
+            if key == "total":
+                continue
             name = rawPerson.get('name')
-            url  = rawPerson.get('html_url')
+
+            url = None
+            homelink = rawPerson.get('home_link')
+            if homelink:
+                url  = 'https://codeberg.org' + rawPerson.get('home_link')
+
             email = rawPerson.get('email')
             result.append(Person(name=name, url=url, email=email))
         return result
