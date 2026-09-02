@@ -14,7 +14,7 @@ import base64
 import requests
 from urllib.parse import quote
 
-from app.layer_3.plugins.shared.person import Person
+from app.layer_3.plugins.shared.types.person import Person
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
@@ -144,24 +144,35 @@ class GitLabClient(GitPlatformClient):
     def get_repository(self) -> dict:
         """Fetches the project metadata from the GitLab API."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_contributors(self) -> list[Person]:
         """Fetches the list of contributors for the repository."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/contributors"
-        response = self._caching_get(url).json()
-        result = []
-        for rawPerson in response:
-            name = rawPerson.get('name')
-            url  = rawPerson.get('html_url')
-            email = rawPerson.get('email')
-            result.append(Person(name=name, url=url, email=email))
+        response = self._caching_get_json(url)
+
+        result: list[Person] = []
+        for raw_person in response:
+            full_name = raw_person.get('name')
+            email = raw_person.get('email')
+
+            person = Person(email=email)
+
+            if full_name:
+                # GitLab only gives one free-text "name" field, not given/family split
+                name_parts = full_name.rsplit(" ", 1)
+                if len(name_parts) == 2:
+                    person.givenName, person.familyName = name_parts
+                else:
+                    person.givenName = full_name
+
+            result.append(person)
         return result
 
     def get_programming_languages(self) -> dict[str, float]:
         """Fetches the programming language breakdown for the project."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/languages"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_languages(self) -> dict:
         """Fetches the programming languages used in the repository (GitLab override)."""
@@ -170,12 +181,12 @@ class GitLabClient(GitPlatformClient):
     def get_releases(self) -> list:
         """Fetches the list of releases for the repository."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/releases"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_tags(self) -> list:
         """Fetches the list of tags for the repository."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/tags"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_default_branch(self) -> str:
         """Fetches the default branch name for the repository."""
@@ -315,12 +326,12 @@ class GitLabClient(GitPlatformClient):
             Branch object with commit information
         """
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/branches/{quote(branch, safe='')}"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_branches(self) -> list:
         """Fetches all branches for the repository."""
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/branches"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_readme(self) -> dict:
         """Fetches the README file for the repository.

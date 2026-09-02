@@ -3,8 +3,9 @@ from typing import Any
 
 from app.layer_3.plugins.shared.foundation.caching_http_client import CachingHttpClient
 from app.layer_3.steps.contracts import ExtractionState, ExtractionContext
-from app.layer_3.plugins.shared.person import Person  # adjust import path as needed
-
+from app.layer_3.plugins.shared.types.person import Person
+from app.layer_3.plugins.shared.types.organization import Organization
+from app.layer_3.plugins.shared.types.online_account import OnlineAccount
 
 class OpenAlexClient(CachingHttpClient):
 
@@ -49,13 +50,29 @@ class OpenAlexClient(CachingHttpClient):
                 given_name, family_name = display_name, ""
 
             institutions = author_entry.get("institutions", []) or []
-            affiliation = institutions[0].get("display_name") if institutions else None
+            affiliation = None
+            if institutions:
+                institution = institutions[0]
+                affiliation = Organization(
+                    name=institution.get("display_name"),
+                    url=institution.get("homepage_url"),
+                    sameAs=institution.get("id") or institution.get("ror"),
+                )
+
+            openalex_id = author.get("id")
+            account = None
+            if openalex_id:
+                account = OnlineAccount(
+                    accountName=display_name,
+                    accountServiceHomepage=openalex_id,
+                )
 
             person = Person(
                 givenName=given_name,
                 familyName=family_name,
                 atId=author.get("orcid"),
                 affiliation=affiliation,
+                account=account,
             )
             authors.append(person)
 

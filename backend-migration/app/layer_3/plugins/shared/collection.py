@@ -1,6 +1,6 @@
 import re
 import datetime
-from app.layer_3.plugins.shared.person import Person
+from app.layer_3.plugins.shared.types.person import Person
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_files
@@ -105,32 +105,50 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
 
     extracts = {'https://schema.org/author'}
 
+    CFF_CONFIDENCE = 0.90
+    OPENALEX_CONFIDENCE = 0.95
+    BIBTEX_CONFIDENCE = 0.85
+
     def extract(self, context, state):
         client = self.get_client(context, state)
 
-        # --- CFF ---
-        citations = client.get_parsed_citations()
-        for cff in citations:
+        self._extract_cff(client, state)
+        self._extract_openalex(context, client, state)
+        self._extract_bibtex(client, state)
+
+        return state
+
+    def _collect(self, state, source, persons, confidence):
+        if persons:
+            state.metadata_collector.collect(source, "https://schema.org/author", persons, confidence)
+
+    def _extract_cff(self, client, state):
+        for cff in client.get_parsed_citations():
             authors = []
             for cff_author in cff.get("authors", []):
+                orcid = cff_author.get("orcid")
                 person = Person(
                     familyName=cff_author.get("family-names"),
                     givenName=cff_author.get("given-names"),
-                    url=cff_author.get("orcid"),
+                    identifier=self._normalize_orcid(orcid) if orcid else None,
                     name=cff_author.get("name"),
                 )
-                authors.append(person.toJsonLdDict())
-            if authors:
-                state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.90)
+                if any([person.name, person.givenName, person.familyName]):
+                    authors.append(person.to_jsonld_dict())
+            self._collect(state, "CFF File", authors, self.CFF_CONFIDENCE)
 
-        # --- OpenAlex ---
-        for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
+    @staticmethod
+    def _normalize_orcid(orcid: str) -> str:
+        return orcid if orcid.startswith("http") else f"https://orcid.org/{orcid}"
+
+    def _extract_openalex(self, context, client, state):
+        dois = client.get_dois_from_parsed_citations().union(client.get_dois_from_readmes())
+        for doi in dois:
             authors = OpenAlexClient.get_or_create(context, state).get_authors(doi)
-            authors = [author.toJsonLdDict() for author in authors]
-            if authors:
-                state.metadata_collector.collect("OpenAlex", "https://schema.org/author", authors, 0.95)
+            authors = [author.to_jsonld_dict() for author in authors]
+            self._collect(state, "OpenAlex", authors, self.OPENALEX_CONFIDENCE)
 
-        # --- BibTeX ---
+    def _extract_bibtex(self, client, state):
         for bibtex in client.get_parsed_bibtex():
             author_field = bibtex.get('fields', {}).get('author')
             if not author_field:
@@ -149,13 +167,9 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
                     person = Person(name=entry)
 
                 if any([person.name, person.givenName, person.familyName]):
-                    persons.append(person.toJsonLdDict())
+                    persons.append(person.to_jsonld_dict())
 
-            if persons:
-                state.metadata_collector.collect("BibTex", "https://schema.org/author", persons, 0.85)
-
-        return state
-
+            self._collect(state, "BibTex", persons, self.BIBTEX_CONFIDENCE)
 
 class GitPlatformLicenseExtractor(GitPlatformBaseExtractor):
     """schema:license"""
@@ -230,7 +244,7 @@ class GitPlatformIdentifierExtractor(GitPlatformBaseExtractor):
         client = self.get_client(context, state)
         
         # from CFF
-        identifiers = list(client.get_dois_from_parsed_citaitons())
+        identifiers = list(client.get_dois_from_parsed_citations())
         if len(identifiers) > 0:
             state.metadata_collector.collect("CFF File", "https://schema.org/identifier", identifiers, 0.9)
 
@@ -374,7 +388,7 @@ class GitPlatformKeywordsExtractor(GitPlatformBaseExtractor):
             state.metadata_collector.collect("CFF File", "https://schema.org/keywords", keywords, 0.90)
         
         # Query OpenAlex
-        for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
+        for doi in client.get_dois_from_parsed_citations().union(client.get_dois_from_readmes()):
             keywords = OpenAlexClient.get_or_create(context, state).get_keywords(doi)
             if len(keywords) > 0:
                 state.metadata_collector.collect("OpenAlex", "https://schema.org/keywords", keywords, 0.95)
@@ -439,7 +453,7 @@ class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
 
     def extract(self, context, state):
         # extract from API
-        contributors = [person.toJsonLdDict() for person in self.get_client(context, state).get_contributors()]
+        contributors = [person.to_jsonld_dict() for person in self.get_client(context, state).get_contributors()]
         state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
         return state
 

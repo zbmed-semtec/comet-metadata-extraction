@@ -1,12 +1,12 @@
 import logging
 from abc import ABC, abstractmethod
 from time import sleep
+from typing import Any
 import requests
 from app.layer_3.plugins.shared.foundation.named_stateful_singleton import NamedStatefulSingleton
 from app.layer_3.steps.contracts import ExtractionState, ExtractionContext
 
 logger = logging.getLogger(__name__)
-
 
 class FetchError(Exception):
     """Raised when an HTTP GET request fails after all retries are exhausted."""
@@ -77,6 +77,39 @@ class CachingHttpClient(NamedStatefulSingleton, ABC):
             self.cache[cache_key] = response
 
         return self.cache[cache_key]
+
+    def _caching_get_json(
+        self,
+        url: str,
+        params: dict = None,
+        fetch_function=fetchFunction,
+        default: Any = None,
+    ) -> Any:
+        """Fetches a URL and safely parses the response as JSON.
+
+        Returns `default` (None unless overridden) if the request fails,
+        or if the response body is empty/not valid JSON, instead of raising.
+        Logs a warning in either case so failures are visible without
+        crashing the calling extraction step.
+        """
+        try:
+            response = self._caching_get(url, params=params, fetch_function=fetch_function)
+        except FetchError as exc:
+            logger.warning("failed to fetch %s: %s", url, exc)
+            return default
+
+        if not response.text.strip():
+            logger.warning("empty response body for %s", url)
+            return default
+
+        try:
+            return response.json()
+        except ValueError:
+            logger.warning(
+                "non-JSON response for %s (status=%s): %r",
+                url, response.status_code, response.text[:200],
+            )
+            return default
 
     @abstractmethod
     def _build_headers(self) -> dict:

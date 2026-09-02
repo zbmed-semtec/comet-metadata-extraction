@@ -2,7 +2,7 @@ import re
 import base64
 import requests
 
-from app.layer_3.plugins.shared.person import Person
+from app.layer_3.plugins.shared.types.person import Person
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
@@ -103,44 +103,49 @@ class CodebergClient(GitPlatformClient):
     def get_repository(self) -> dict:
         """Fetches the repository metadata from the Codeberg API."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_contributors(self) -> list[Person]:
         """Fetches the contributor activity data for the repository."""
         url = f'https://codeberg.org/{self.get_repository_owner()}/{self.get_repository_name()}/activity/contributors/data'
-        response = self._caching_get(url).json()
-        result = []
-        for key, rawPerson in response.items():
+        response = self._caching_get_json(url)
+
+        result: list[Person] = []
+        for key, raw_person in response.items():
             if key == "total":
                 continue
-            name = rawPerson.get('name')
 
-            url = None
-            homelink = rawPerson.get('home_link')
-            if homelink:
-                url  = 'https://codeberg.org' + rawPerson.get('home_link')
+            name = raw_person.get('name')
+            if not name:
+                continue
 
-            email = rawPerson.get('email')
-            result.append(Person(name=name, url=url, email=email))
+            home_link = raw_person.get('home_link')
+            profile_url = f'https://codeberg.org{home_link}' if home_link else None
+
+            result.append(Person(
+                name=name,
+                url=profile_url,
+                email=raw_person.get('email') or None,
+            ))
         return result
 
     def get_languages(self) -> dict:
         """Fetches the programming languages used in the repository."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/languages"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_releases(self) -> list:
         """Fetches the list of releases for the repository."""
         try:
             url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/releases"
-            return self._caching_get(url).json()
+            return self._caching_get_json(url)
         except requests.exceptions.HTTPError:
             return []
 
     def get_tags(self) -> list:
         """Fetches the list of tags for the repository."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/tags"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_default_branch(self) -> str:
         """Fetches the default branch name for the repository."""
