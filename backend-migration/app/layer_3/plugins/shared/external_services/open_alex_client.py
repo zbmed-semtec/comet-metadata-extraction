@@ -48,10 +48,14 @@ class OpenAlexClient(CachingHttpClient):
             else:
                 given_name, family_name = display_name, ""
 
+            institutions = author_entry.get("institutions", []) or []
+            affiliation = institutions[0].get("display_name") if institutions else None
+
             person = Person(
                 givenName=given_name,
                 familyName=family_name,
                 atId=author.get("orcid"),
+                affiliation=affiliation,
             )
             authors.append(person)
 

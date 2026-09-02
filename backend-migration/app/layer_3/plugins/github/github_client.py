@@ -117,16 +117,35 @@ class GitHubClient(GitPlatformClient):
         return self._caching_get(url).json()
 
     def get_contributors(self) -> list[Person]:
-        """Fetches the contributor list for the repository."""
+        """Fetches the contributor list for the repository, enriched with user profile data."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/contributors"
         response = self._caching_get(url).json()
         result = []
-        for rawPerson in response:
-            name = rawPerson.get('login')
-            url  = rawPerson.get('html_url')
-            result.append(Person(name=name, url=url))
-        return result
+        for raw_person in response:
+            if raw_person.get('type') == 'Bot':
+                continue
+            login = raw_person.get('login')
+            html_url = raw_person.get('html_url')
 
+            person = Person(onlineAccount=login, url=html_url, atId=raw_person.get('url'))
+
+            user_url = raw_person.get('url')
+            if user_url:
+                user_data = self._caching_get(user_url).json()
+                full_name = user_data.get('name')
+                if full_name:
+                    # GitHub only gives one free-text "name" field, not given/family split
+                    name_parts = full_name.rsplit(" ", 1)
+                    if len(name_parts) == 2:
+                        person.givenName, person.familyName = name_parts
+                    else:
+                        person.givenName = full_name
+                person.email = user_data.get('email')  # often null unless publicly set
+                person.affiliation = user_data.get('company')
+                person.url = user_data.get('blog') or html_url
+
+            result.append(person)
+        return result
 
     def get_languages(self) -> dict:
         """Fetches the programming languages used in the repository."""

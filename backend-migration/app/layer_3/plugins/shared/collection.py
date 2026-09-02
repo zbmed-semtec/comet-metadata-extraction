@@ -25,7 +25,7 @@ class GitPlatformNameExtractor(GitPlatformBaseExtractor):
         cffs = client.get_parsed_citations()
         for cff in cffs:
             if 'title' in cff:
-                state.metadata_collector.collect("CFF File", "https://schema.org/name", cff['title'], 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/name", cff['title'], 0.90)
 
         entries = client.get_parsed_bibtex()
         for entry in entries:
@@ -51,10 +51,10 @@ class GitPlatformDescriptionExtractor(GitPlatformBaseExtractor):
         for cff in cffs:
             # non standard but seen 'in the wild'
             if 'abstract' in cff:
-                state.metadata_collector.collect("CFF File", "https://schema.org/description", cff['abstract'], 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/description", cff['abstract'], 0.90)
             # non standard but seen 'in the wild'
             if 'description' in cff:
-                state.metadata_collector.collect("CFF File", "https://schema.org/description", cff['description'], 0.85)
+                state.metadata_collector.collect("CFF File", "https://schema.org/description", cff['description'], 0.90)
         return state
 
 class GitPlatformUrlExtractor(GitPlatformBaseExtractor):
@@ -73,7 +73,7 @@ class GitPlatformUrlExtractor(GitPlatformBaseExtractor):
         cffs = client.get_parsed_citations()
         for cff in cffs:
             if 'url' in cff:
-                state.metadata_collector.collect("CFF File", 'https://schema.org/url', cff['url'], 0.85)
+                state.metadata_collector.collect("CFF File", 'https://schema.org/url', cff['url'], 0.90)
         return state
 
 class GitPlatformCodeRepositoryExtractor(GitPlatformBaseExtractor):
@@ -106,33 +106,31 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
     extracts = {'https://schema.org/author'}
 
     def extract(self, context, state):
-        # Extract from CFF
         client = self.get_client(context, state)
+
+        # --- CFF ---
         citations = client.get_parsed_citations()
         for cff in citations:
             authors = []
-            for cffAuthor in cff.get("authors", []):
-                person = Person()
-                if "family-names" in cffAuthor:
-                    person.familyName = cffAuthor["family-names"]
-                if "given-names" in cffAuthor:
-                    person.givenName = cffAuthor["given-names"]
-                if "orcid" in cffAuthor:
-                    person.url = cffAuthor["orcid"]
-                if 'name' in cffAuthor:
-                    person.name = cffAuthor["name"]
+            for cff_author in cff.get("authors", []):
+                person = Person(
+                    familyName=cff_author.get("family-names"),
+                    givenName=cff_author.get("given-names"),
+                    url=cff_author.get("orcid"),
+                    name=cff_author.get("name"),
+                )
                 authors.append(person.toJsonLdDict())
-            if len(authors) > 0:
-                state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.85)
+            if authors:
+                state.metadata_collector.collect("CFF File", "https://schema.org/author", authors, 0.90)
 
-        # Query OpenAlex
+        # --- OpenAlex ---
         for doi in client.get_dois_from_parsed_citaitons().union(client.get_dois_from_readmes()):
             authors = OpenAlexClient.get_or_create(context, state).get_authors(doi)
             authors = [author.toJsonLdDict() for author in authors]
             if authors:
                 state.metadata_collector.collect("OpenAlex", "https://schema.org/author", authors, 0.95)
 
-        # Extract from bibtex
+        # --- BibTeX ---
         for bibtex in client.get_parsed_bibtex():
             author_field = bibtex.get('fields', {}).get('author')
             if not author_field:
@@ -144,27 +142,20 @@ class GitPlatformAuthorExtractor(GitPlatformBaseExtractor):
                 if not entry:
                     continue
 
-                person = Person()
                 if "," in entry:
-                    last, given = entry.split(",", 1)
-                    last, given = last.strip(), given.strip()
-                    if last:
-                        person.familyName = last
-                    if given:
-                        person.givenName = given
+                    last, given = (part.strip() for part in entry.split(",", 1))
+                    person = Person(familyName=last or None, givenName=given or None)
                 else:
-                    person.name = entry
+                    person = Person(name=entry)
 
-                # Check if person has any meaningful field set
                 if any([person.name, person.givenName, person.familyName]):
                     persons.append(person.toJsonLdDict())
 
             if persons:
-                state.metadata_collector.collect(
-                    "BibTex", "https://schema.org/author", persons, 0.85
-                )
+                state.metadata_collector.collect("BibTex", "https://schema.org/author", persons, 0.85)
 
         return state
+
 
 class GitPlatformLicenseExtractor(GitPlatformBaseExtractor):
     """schema:license"""
@@ -654,10 +645,10 @@ class GitPlatformDownloadUrlExtractor(GitPlatformBaseExtractor):
     extracts = {"https://schema.org/downloadUrl"}
     
     def extract(self, context, state):
-        download_url = self.get_client(context, state).get_download_url()
-        if download_url:
-            state.metadata_collector.collect("Platform API", "https://schema.org/codeRepository", download_url, 0.95)
-            state.metadata_collector.collect("Platform API", 'https://codemeta.github.io/terms/codeRepository', download_url, 0.95)
+        html_url = self.get_client(context, state).get_html_url()
+        if html_url:
+            state.metadata_collector.collect("Platform API", "https://schema.org/codeRepository", html_url, 0.95)
+            state.metadata_collector.collect("Platform API", 'https://codemeta.github.io/terms/codeRepository', html_url, 0.95)
         return state
 
 

@@ -67,6 +67,27 @@ classes:
     slots:
       - fundingScheme
 
+  ScholarlyArticle:
+    description: >-
+      An academic publication related to the software
+      (used for referencePublication).
+    class_uri: schema:ScholarlyArticle
+    slots:
+      - name
+      - identifier
+      - url
+
+  CreativeWork:
+    description: >-
+      A generic creative work, used as a range for properties like
+      citation, license, isPartOf, and hasPart when a structured
+      reference (rather than a bare URL) is provided.
+    class_uri: schema:CreativeWork
+    slots:
+      - name
+      - identifier
+      - url
+
   SoftwareSourceCode:
     description: >-
       A software project described according to the CodeMeta 3.1
@@ -103,11 +124,9 @@ classes:
       - readme
       - releaseNotes
       - issueTracker
-      - discussionUrl
       - buildInstructions
       - referencePublication
       - downloadUrl
-      - archivedAt
       # ── runtime & requirements ────────────────
       - softwareRequirements
       - operatingSystem
@@ -174,13 +193,7 @@ classes:
       citation:
         in_subset:
           - recommended
-      archivedAt:
-        in_subset:
-          - recommended
       issueTracker:
-        in_subset:
-          - optional
-      discussionUrl:
         in_subset:
           - optional
       buildInstructions:
@@ -267,6 +280,7 @@ slots:
     slot_uri: schema:identifier
     description: >-
       A formal identifier for the entity, e.g. a DOI or ORCID.
+      Official type: PropertyValue or URL.
     range: string
     multivalued: true
 
@@ -289,14 +303,19 @@ slots:
 
   legalName:
     slot_uri: schema:legalName
-    description: Official legal name of the organization.
+    description: >-
+      Official legal name of the organization. NOTE: not part of the
+      official CodeMeta-recognized property list; retained here as a
+      documented local extension.
     range: string
 
   fundingScheme:
     slot_uri: schema:fundingScheme
     description: >-
       The funding programme or scheme under which support was provided,
-      e.g. "Horizon Europe".
+      e.g. "Horizon Europe". NOTE: not part of the official
+      CodeMeta-recognized property list; retained here as a documented
+      local extension.
     range: string
 
   # ── Agent-role slots (on SoftwareSourceCode) ─
@@ -372,8 +391,10 @@ slots:
     range: string
 
   codeRepository:
-    slot_uri: codemeta:codeRepository
-    description: URL of the source code repository, e.g. a GitHub URL.
+    slot_uri: schema:codeRepository
+    description: >-
+      URL of the source code repository, e.g. a GitHub URL.
+      Corrected: this is a native schema.org term, not codemeta:.
     range: uri
 
   version:
@@ -390,8 +411,9 @@ slots:
   license:
     slot_uri: schema:license
     description: >-
-      License for the software. Prefer an SPDX identifier URI,
-      e.g. https://spdx.org/licenses/MIT.html
+      License for the software. Official type: CreativeWork or URL.
+      Prefer an SPDX identifier URI, e.g.
+      https://spdx.org/licenses/MIT.html
     range: uri
     multivalued: true
 
@@ -431,18 +453,15 @@ slots:
     range: uri
 
   releaseNotes:
-    slot_uri: codemeta:releaseNotes
-    description: URL or text describing changes in this release.
+    slot_uri: schema:releaseNotes
+    description: >-
+      URL or text describing changes in this release.
+      Corrected: this is a native schema.org term, not codemeta:.
     range: string
 
   issueTracker:
     slot_uri: codemeta:issueTracker
     description: URL of the issue tracker.
-    range: uri
-
-  discussionUrl:
-    slot_uri: schema:discussionUrl
-    description: URL of a forum or discussion channel for the software.
     range: uri
 
   buildInstructions:
@@ -454,9 +473,10 @@ slots:
     slot_uri: codemeta:referencePublication
     description: >-
       Academic publication(s) that describe or should be cited
-      for this software.
-    range: string
+      for this software. Official type: ScholarlyArticle.
+    range: ScholarlyArticle
     multivalued: true
+    inlined_as_list: true
 
   downloadUrl:
     slot_uri: schema:downloadUrl
@@ -464,28 +484,23 @@ slots:
     range: uri
     multivalued: true
 
-  archivedAt:
-    slot_uri: schema:archivedAt
-    description: >-
-      URL of a permanent archive of the software,
-      e.g. a Zenodo or Software Heritage URL.
-    range: uri
-
   citation:
     slot_uri: schema:citation
     description: >-
       A citation or reference to a work that should be used when
-      citing this software.
-    range: string
+      citing this software. Official type: CreativeWork or URL.
+    range: uri
     multivalued: true
 
   # ── runtime & requirements ───────────────────
 
   softwareRequirements:
     slot_uri: schema:softwareRequirements
-    description: Required software dependencies.
-    range: string
+    description: >-
+      Required software dependencies. Official type: SoftwareSourceCode.
+    range: SoftwareSourceCode
     multivalued: true
+    inlined_as_list: true
 
   operatingSystem:
     slot_uri: schema:operatingSystem
@@ -521,11 +536,16 @@ slots:
     slot_uri: schema:isPartOf
     description: >-
       A larger software suite or project this software is part of.
-    range: uri
+      Official type: CreativeWork.
+    range: CreativeWork
     multivalued: true
+    inlined_as_list: true
 
   hasPart:
     slot_uri: schema:hasPart
-    description: A sub-component or module that is part of this software.
-    range: uri
+    description: >-
+      A sub-component or module that is part of this software.
+      Official type: CreativeWork.
+    range: CreativeWork
     multivalued: true
+    inlined_as_list: true

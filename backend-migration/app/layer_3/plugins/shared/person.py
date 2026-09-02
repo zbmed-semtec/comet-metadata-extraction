@@ -6,9 +6,11 @@ class Person(BaseModel):
     name: Optional[str] = None
     givenName: Optional[str] = None
     familyName: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[list[str] | str] = None
     url: Optional[str] = None
     atId: Optional[str] = Field(default=None, serialization_alias="@id")
+    affiliation: Optional[str] = None
+    onlineAccount: Optional[list[str] | str] = None
 
     def toJsonLdDict(self):
         helper = self.model_dump(by_alias=True)
