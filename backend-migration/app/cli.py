@@ -7,8 +7,10 @@ from typing import Any, Dict, List, Tuple
 
 from fastapi.encoders import jsonable_encoder
 
+from app.config.settings import settings
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
+from app.layer_3.plugins.llm.bootstrap import bootstrap_ollama_if_configured
 
 def _print_json(data: Any) -> None:
     """Print JSON-safe data to stdout."""
@@ -16,7 +18,9 @@ def _print_json(data: Any) -> None:
     json.dump(safe_data, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
 
+
 def _extract_command(args: argparse.Namespace) -> None:
+    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
     initialize()
     jsonld_document, enriched = run_extraction(
         repo_url=args.url,
@@ -83,6 +87,7 @@ def _collect_property_results(
     }
 
 def _extract_property_command(args: argparse.Namespace) -> None:
+    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
     jsonld_document, enriched = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
@@ -123,6 +128,7 @@ def _fairness_command(args: argparse.Namespace) -> None:
     """
     Compute a FAIRness report for a repository and print JSON.
     """
+    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
     jsonld_document, fairness_report = run_fairness_assessment(
         repo_url=args.url,
         schema=args.schema,
