@@ -63,3 +63,33 @@ Notes:
 3. Set the LLM values in `backend-migration/.env`.
 4. Set `README_LLM_ENABLED=true` to turn the LLM plugin on.
 5. Set it back to `false` to disable the LLM plugin again.
+
+## Folder Structure
+
+The plugin repository layout (files in this folder) and their primary responsibilities:
+
+- `__init__.py`: plugin package entry.
+- `bootstrap.py`: start/prepare the LLM provider (pull or warm models for `ollama`).
+- `config.py`: configuration helpers and `.env` mapping for the plugin.
+- `provider.py`: provider abstraction and clients (Ollama / vLLM integrations).
+- `retrieval.py`: code to fetch repository files, blobs, or external documents for processing.
+- `prompt.py`: prompt templates and prompt-building helpers used to query the model.
+- `extraction.py`: orchestration that runs prompts against the model and parses results.
+- `collection.py`: gathers and transforms extracted metadata into the pipeline shape.
+- `confidence.py`: scoring/heuristics for evaluating extraction certainty and filtering results.
+- `heuristics.py`: rule-based post-processing to normalize or correct extracted values.
+- `__pycache__/`: Python bytecode cache (auto-generated).
+
+## Workflow (line of work)
+
+A concise, linear view of what the LLM plugin does during a run:
+
+1. Bootstrap: when enabled, `bootstrap.py` ensures the configured provider/model is available (auto-starts Ollama when configured).
+2. Retrieval: `retrieval.py` collects repository files, README contents, or other target documents to analyze.
+3. Prompting: `prompt.py` crafts model prompts using templates and the retrieved content.
+4. Provider call: `provider.py` sends the prompts to the selected LLM (Ollama, vLLM) and returns raw responses.
+5. Extraction: `extraction.py` interprets model outputs, extracts structured metadata, and applies initial parsing.
+6. Confidence & heuristics: `confidence.py` and `heuristics.py` score and refine results, removing low-confidence or inconsistent entries.
+7. Collection: `collection.py` assembles the final metadata objects and hands them back to the main pipeline for storage or further processing.
+
+This flow is designed so the LLM augments — not replaces — deterministic heuristics, and all LLM-derived values are validated and scored before being merged into the main metadata pipeline.
