@@ -3,7 +3,7 @@ import datetime
 from app.layer_3.plugins.shared.types.person import Person
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
-from app.layer_3.plugins.codeberg.utils import match_license_text, dependency_files
+from app.layer_3.plugins.shared.utils import match_license_text, dependency_files, iso_dt_to_str
 from app.layer_3.plugins.shared.external_services.wayback_client import WaybackClient
 from app.layer_3.plugins.shared.external_services.software_heritage_client import SoftwareHeritageClient
 from app.layer_3.plugins.shared.external_services.open_alex_client import OpenAlexClient
@@ -529,8 +529,7 @@ class GitPlatformDateExtractor(GitPlatformBaseExtractor):
     extracts = {'https://schema.org/dateCreated', 'https://schema.org/datePublished', 'https://schema.org/dateModified'}
 
     def extract(self, context, state):
-        def iso_dt_to_str(iso_dt):
-            return str(datetime.datetime.fromisoformat(str(iso_dt)).date())
+        
         client = self.get_client(context, state)
 
         # generic

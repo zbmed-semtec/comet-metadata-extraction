@@ -1,5 +1,6 @@
 import json
 import datetime
+from app.layer_3.plugins.shared.utils import iso_dt_to_str
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 
 class GitPlatformConnossExtractor(GitPlatformBaseExtractor):
@@ -107,13 +108,6 @@ class GitPlatformConnossExtractor(GitPlatformBaseExtractor):
                 except (json.JSONDecodeError, Exception):
                     return None
         return None
-
-    @staticmethod
-    def _iso_dt_to_str(iso_dt):
-        try:
-            return str(datetime.datetime.fromisoformat(str(iso_dt)).date())
-        except Exception:
-            return str(iso_dt)
 
     @staticmethod
     def _normalize_person(person_data):
@@ -350,15 +344,15 @@ class GitPlatformConnossExtractor(GitPlatformBaseExtractor):
         # dates
         date_created = connoss.get("dateCreated")
         if date_created:
-            collector.collect(self.SOURCE, "https://schema.org/dateCreated", self._iso_dt_to_str(date_created), self.CONF)
+            collector.collect(self.SOURCE, "https://schema.org/dateCreated", iso_dt_to_str(date_created), self.CONF)
 
         date_modified = connoss.get("dateModified")
         if date_modified:
-            collector.collect(self.SOURCE, "https://schema.org/dateModified", self._iso_dt_to_str(date_modified), self.CONF)
+            collector.collect(self.SOURCE, "https://schema.org/dateModified", iso_dt_to_str(date_modified), self.CONF)
 
         date_published = connoss.get("datePublished")
         if date_published:
-            collector.collect(self.SOURCE, "https://schema.org/datePublished", self._iso_dt_to_str(date_published), self.CONF)
+            collector.collect(self.SOURCE, "https://schema.org/datePublished", iso_dt_to_str(date_published), self.CONF)
 
         # schema:downloadUrl
         download_url = connoss.get("downloadUrl")
