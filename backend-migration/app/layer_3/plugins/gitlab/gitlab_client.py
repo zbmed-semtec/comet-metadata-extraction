@@ -147,14 +147,19 @@ class GitLabClient(GitPlatformClient):
         return self._caching_get_json(url)
 
     def get_contributors(self) -> list[Person]:
-        """Fetches the list of contributors for the repository."""
+        """Fetches the list of contributors for the repository.
+
+        Note: GitLab's contributors endpoint only returns free-text name/email
+        pairs aggregated from commit authorship — no user id, username, or
+        profile URL is available here (unlike GitHub's contributors API).
+        """
         url = f"{self._get_api_base_url()}/projects/{self.get_project_id()}/repository/contributors"
         response = self._caching_get_json(url)
 
         result: list[Person] = []
         for raw_person in response:
             full_name = raw_person.get('name')
-            email = raw_person.get('email')
+            email = raw_person.get('email')  # may be a commit-noreply placeholder
 
             person = Person(email=email)
 

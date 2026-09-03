@@ -13,3 +13,4 @@ class Person(JsonLdSerializable):
     atId: Optional[str] = Field(default=None, serialization_alias="@id")
     affiliation: Optional[Organization] = None
     account: Optional[OnlineAccount] = None
+    sameAs: Optional[str] = None

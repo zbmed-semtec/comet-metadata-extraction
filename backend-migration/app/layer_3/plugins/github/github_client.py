@@ -133,7 +133,11 @@ class GitHubClient(GitPlatformClient):
             user_url = raw_person.get('url')
 
             person = Person(
-                account=OnlineAccount(accountName=login, accountServiceHomepage=html_url),
+                account=OnlineAccount(
+                    accountName=login,
+                    accountServiceHomepage="https://github.com",
+                    url=html_url,
+                ),
                 url=html_url,
                 atId=user_url,
             )

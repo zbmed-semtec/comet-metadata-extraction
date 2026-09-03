@@ -31,7 +31,7 @@ class OpenAlexClient(CachingHttpClient):
             return work['title']
 
     def get_authors(self, doi: str) -> list[Person]:
-        """Normalize authorships from an OpenAlex work payload """
+        """Normalize authorships from an OpenAlex work payload."""
         authors: list[Person] = []
         work = self.get_work(doi)
         if not work:
@@ -47,7 +47,7 @@ class OpenAlexClient(CachingHttpClient):
             if len(name_parts) == 2:
                 given_name, family_name = name_parts
             else:
-                given_name, family_name = display_name, ""
+                given_name, family_name = display_name, None
 
             institutions = author_entry.get("institutions", []) or []
             affiliation = None
@@ -59,20 +59,15 @@ class OpenAlexClient(CachingHttpClient):
                     sameAs=institution.get("id") or institution.get("ror"),
                 )
 
+            orcid = author.get("orcid")
             openalex_id = author.get("id")
-            account = None
-            if openalex_id:
-                account = OnlineAccount(
-                    accountName=display_name,
-                    accountServiceHomepage=openalex_id,
-                )
 
             person = Person(
                 givenName=given_name,
                 familyName=family_name,
-                atId=author.get("orcid"),
+                atId=orcid or openalex_id,
+                sameAs=openalex_id if orcid else None,
                 affiliation=affiliation,
-                account=account,
             )
             authors.append(person)
 

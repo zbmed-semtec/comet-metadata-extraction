@@ -3,6 +3,7 @@ import base64
 import requests
 
 from app.layer_3.plugins.shared.types.person import Person
+from app.layer_3.plugins.shared.types.online_account import OnlineAccount
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
@@ -121,10 +122,15 @@ class CodebergClient(GitPlatformClient):
 
             home_link = raw_person.get('home_link')
             profile_url = f'https://codeberg.org{home_link}' if home_link else None
+            username = home_link.lstrip('/') if home_link else None
 
             result.append(Person(
                 name=name,
-                url=profile_url,
+                account=OnlineAccount(
+                    accountName=username,
+                    accountServiceHomepage="https://codeberg.org",
+                    url=profile_url,
+                ) if profile_url else None,
                 email=raw_person.get('email') or None,
             ))
         return result

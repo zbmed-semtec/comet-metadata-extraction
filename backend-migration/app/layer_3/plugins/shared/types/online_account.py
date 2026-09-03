@@ -22,3 +22,4 @@ class OnlineAccount(JsonLdSerializable):
         default=None,
         description="Indicates a homepage for some item, e.g. a website, an organization, or an online account, that provides the service this account is associated with."
     )
+    url: Optional[str] = None 
