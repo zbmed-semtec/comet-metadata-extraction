@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
 
-BASE_DIR = Path(__file__).resolve().parent  # or .parent.parent, depending on layout
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SCHEMAS_PATH = str(BASE_DIR / "schemas")
 
 class Settings(BaseSettings):
