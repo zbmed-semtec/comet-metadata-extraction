@@ -163,12 +163,12 @@ def main() -> None:
     extract_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     extract_parser.add_argument(
         "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
+        help="Schema to analyze against (e.g. connoss, CODEMETA).",
     )
     extract_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_parser.add_argument(
         "--token",
@@ -186,7 +186,7 @@ def main() -> None:
         "extract_property",
         help=(
             "Extract a single property (value and source) for a repository. "
-            "Schema defaults to masmp if not given."
+            "Schema defaults to connoss if not given."
         ),
     )
     extract_prop_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
@@ -199,13 +199,13 @@ def main() -> None:
     )
     extract_prop_parser.add_argument(
         "--schema",
-        default="masmp",
-        help="Schema to use (default: masmp).",
+        default="connoss",
+        help="Schema to use (default: connoss).",
     )
     extract_prop_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_prop_parser.add_argument(
         "--token",
@@ -221,7 +221,7 @@ def main() -> None:
     # fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     # fairness_parser.add_argument(
     #     "schema",
-    #     help="Schema to analyze against (e.g. masmp, CODEMETA).",
+    #     help="Schema to analyze against (e.g. connoss, CODEMETA).",
     # )
     # fairness_parser.add_argument(
     #     "--token",

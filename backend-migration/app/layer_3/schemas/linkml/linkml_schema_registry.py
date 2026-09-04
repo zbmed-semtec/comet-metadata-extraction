@@ -6,6 +6,10 @@ from app.layer_3.schemas.linkml.linkml_schema import LinkMlSchema
 
 logger = logging.getLogger(__name__)
 
+class MissingSchemaError(KeyError):
+    """Raised when a requested schema is not found in the registry."""
+    pass
+
 class LinkMlSchemaRegistry(BaseSchemaRegistry):
     def __init__(self):
         self.schemas: dict[str, LinkMlSchema] = {}
@@ -33,7 +37,7 @@ class LinkMlSchemaRegistry(BaseSchemaRegistry):
     def get(self, schema_name: str, class_name: str) -> LinkMlSchema:
         name = f"{schema_name.lower()}:{class_name.lower()}"
         if name not in self.schemas:
-            raise KeyError(f"Schema '{name}' not found in registry")
+            raise MissingSchemaError(f"Schema '{name}' not found in registry")
         return self.schemas[name]
 
     def list(self) -> list[str]:
