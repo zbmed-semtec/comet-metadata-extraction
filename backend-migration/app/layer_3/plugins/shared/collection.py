@@ -1,12 +1,24 @@
+"""
+Platform-agnostic extraction plugins for Git-hosted repositories.
+
+Each class extracts one schema.org/codemeta/maSMP property. These classes are abstract on their own (no client) -- each platform's collection.py mixes one of these with its concrete *BaseExtractor (e.g. GitHubBaseExtractor) to produce a runnable plugin.
+
+Where a property has multiple sources (API, CITATION.cff, BibTeX, README, OpenAlex), each is collected independently with its own confidence score;
+conflict resolution across sources happens later in merge_* steps.
+"""
+
 import re
 import datetime
 from app.layer_3.plugins.shared.types.person import Person
+from app.layer_3.plugins.shared.types.online_account import OnlineAccount
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.shared.utils import match_license_text, dependency_files, iso_dt_to_str
 from app.layer_3.plugins.shared.external_services.wayback_client import WaybackClient
 from app.layer_3.plugins.shared.external_services.software_heritage_client import SoftwareHeritageClient
 from app.layer_3.plugins.shared.external_services.open_alex_client import OpenAlexClient
+from app.layer_3.plugins.shared.utils import parse_contributor_names
+
 
 class GitPlatformNameExtractor(GitPlatformBaseExtractor):
     """schema:name"""
@@ -447,6 +459,7 @@ class GitPlatformArchivedAtExtractor(GitPlatformBaseExtractor):
             state.metadata_collector.collect("SoftwareHeritage API", "https://schema.org/archivedAt", [softwareHeritageUrl], 0.95)
         return state
 
+
 class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
 
     extracts = {'https://schema.org/contributor'}
@@ -455,8 +468,27 @@ class GitPlatformContributorsExtractor(GitPlatformBaseExtractor):
         # extract from API
         contributors = [person.to_jsonld_dict() for person in self.get_client(context, state).get_contributors()]
         state.metadata_collector.collect("Platform API", "https://schema.org/contributor", contributors, 0.95)
+        client = self.get_client(context, state)
+
+        # from CONTRIBUTORS.md (unstructured, lower confidence)
+        client = self.get_client(context, state)
+        md_contributors = []
+        for file in client.get_contributors_candidate_files():
+            content = file.get_content()
+            if not content:
+                continue
+            for value in parse_contributor_names(content):
+                if value.startswith("@"):
+                    person = Person(account=OnlineAccount(username=value[1:], serviceHomepage="https://github.com"))
+                else:
+                    person = Person(name=value)
+                md_contributors.append(person.to_jsonld_dict())
+        if md_contributors:
+            state.metadata_collector.collect("CONTRIBUTORS File", "https://schema.org/contributor", md_contributors, 0.7)
+
         return state
 
+    
 class GitPlatformSoftwareVersionExtractor(GitPlatformBaseExtractor):
     """schema:softwareVersion"""
 
@@ -658,10 +690,9 @@ class GitPlatformDownloadUrlExtractor(GitPlatformBaseExtractor):
     extracts = {"https://schema.org/downloadUrl"}
     
     def extract(self, context, state):
-        html_url = self.get_client(context, state).get_html_url()
-        if html_url:
-            state.metadata_collector.collect("Platform API", "https://schema.org/codeRepository", html_url, 0.95)
-            state.metadata_collector.collect("Platform API", 'https://codemeta.github.io/terms/codeRepository', html_url, 0.95)
+        download_url = self.get_client(context, state).get_download_url()
+        if download_url:
+            state.metadata_collector.collect("Platform API", "https://schema.org/downloadUrl", download_url, 0.95)
         return state
 
 
