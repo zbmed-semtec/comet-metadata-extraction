@@ -1,8 +1,11 @@
 import importlib
 import inspect
+import logging
 import pkgutil
-import traceback
 from app.layer_2.base_plugin import BasePlugin
+
+logger = logging.getLogger(__name__)
+
 
 class PluginManager:
 
@@ -25,9 +28,8 @@ class PluginManager:
             try:
                 module = importlib.import_module(module_name)
                 self._load_from_module(module)
-            except:
-                print("problem in", module_name)
-                traceback.print_exc()
+            except Exception:
+                logger.exception("problem in %s", module_name)
 
     def _load_from_module(self, module):
         """Inspect a module and register any self.PLUGIN_BASE_CLASS subclasses found"""
@@ -37,19 +39,19 @@ class PluginManager:
             if not inspect.isclass(obj):
                 continue
             if not issubclass(obj, self.PLUGIN_BASE_CLASS):
-                # print("skipping", obj, "doesnt belong to base class tree")
+                logger.debug("skipping %s, doesn't belong to base class tree", obj)
                 continue
             if obj is self.PLUGIN_BASE_CLASS:
                 # skip the base class itself
-                # print("skipping", obj, "is plugin base class")
+                logger.debug("skipping %s, is plugin base class", obj)
                 continue
             if inspect.isabstract(obj):
                 # skip partially implemented classes
-                # print("skipping", obj, "is abstract")
+                logger.debug("skipping %s, is abstract", obj)
                 continue
-            
+
             self._register(obj)
-        
+
     def _instantiate_plugin(self, plugin_class):
         instance = plugin_class()
         instance.set_plugin_manager(self)
@@ -57,7 +59,7 @@ class PluginManager:
         return instance
 
     def _on_plugin_registration(self, plugin_class):
-        print(f"Registered plugin: '{plugin_class.name}' v{plugin_class.version}")
+        logger.info("Registered plugin: '%s' v%s", plugin_class.name, plugin_class.version)
 
     def _register(self, plugin_class):
         if plugin_class.name not in self.class_registry:

@@ -10,6 +10,9 @@ GitHub-compatible surface.
 
 import base64
 import re
+from app.layer_3.plugins.shared.types.person import Person
+from app.layer_3.plugins.shared.types.organization import Organization
+from app.layer_3.plugins.shared.types.online_account import OnlineAccount
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.shared.git_platform_client import (
     GitPlatformClient,
@@ -113,27 +116,71 @@ class GitHubClient(GitPlatformClient):
     def get_repository(self) -> dict:
         """Fetches the repository metadata from the GitHub API."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
-    def get_contributors(self) -> list:
-        """Fetches the contributor list for the repository."""
+    def get_contributors(self) -> list[Person]:
+        """Fetches the contributor list for the repository, enriched with user profile data."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/contributors"
-        return self._caching_get(url).json()
+        response = self._caching_get_json(url)
+
+        result: list[Person] = []
+        for raw_person in response:
+            if raw_person.get('type') == 'Bot':
+                continue
+
+            login = raw_person.get('login')
+            html_url = raw_person.get('html_url')
+            user_url = raw_person.get('url')
+
+            person = Person(
+                account=OnlineAccount(
+                    accountName=login,
+                    accountServiceHomepage="https://github.com",
+                    url=html_url,
+                ),
+                url=html_url,
+                atId=user_url,
+            )
+
+            if user_url:
+                user_data = self._caching_get_json(user_url)
+
+                full_name = user_data.get('name')
+                if full_name:
+                    # GitHub only gives one free-text "name" field, not given/family split
+                    name_parts = full_name.rsplit(" ", 1)
+                    if len(name_parts) == 2:
+                        person.givenName, person.familyName = name_parts
+                    else:
+                        person.givenName = full_name
+
+                person.email = user_data.get('email')  # often null unless publicly set
+
+                company = user_data.get('company')
+                if company:
+                    # GitHub's "company" field is free text (sometimes prefixed with "@")
+                    org_name = company.lstrip('@').strip()
+                    person.affiliation = Organization(name=org_name)
+
+                person.url = user_data.get('blog') or html_url
+
+            result.append(person)
+        return result
 
     def get_languages(self) -> dict:
         """Fetches the programming languages used in the repository."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/languages"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_releases(self) -> list:
         """Fetches the list of releases for the repository."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/releases"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_tags(self) -> list:
         """Fetches the list of tags for the repository."""
         url = f"{self._get_api_base_url()}/repos/{self.get_repository_owner()}/{self.get_repository_name()}/tags"
-        return self._caching_get(url).json()
+        return self._caching_get_json(url)
 
     def get_default_branch(self) -> str:
         """Fetches the default branch name for the repository."""
@@ -163,7 +210,7 @@ class GitHubClient(GitPlatformClient):
         for tag_descriptor in self.get_tags():
             url = tag_descriptor.get('commit', {}).get('url')
             try:
-                tag = self._caching_get(url).json()
+                tag = self._caching_get_json(url)
                 return tag.get('commit', {}).get('author', {}).get('date')
             except:
                 pass
