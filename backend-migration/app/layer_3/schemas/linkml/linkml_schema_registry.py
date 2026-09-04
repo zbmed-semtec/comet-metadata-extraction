@@ -1,8 +1,14 @@
-
+import logging
 from pathlib import Path
 from linkml_runtime import SchemaView
 from app.layer_1.schemas.base_schema_registry import BaseSchemaRegistry
 from app.layer_3.schemas.linkml.linkml_schema import LinkMlSchema
+
+logger = logging.getLogger(__name__)
+
+class MissingSchemaError(KeyError):
+    """Raised when a requested schema is not found in the registry."""
+    pass
 
 class LinkMlSchemaRegistry(BaseSchemaRegistry):
     def __init__(self):
@@ -23,15 +29,15 @@ class LinkMlSchemaRegistry(BaseSchemaRegistry):
                     schema = LinkMlSchema(view, class_name)
                     self.schemas[name] = schema
                 loaded.append(name)
-            except Exception as e:
-                print(f"Error loading schema from {path}: {e}")
+            except Exception:
+                logger.exception("Error loading schema from %s", path)
 
         return loaded
 
     def get(self, schema_name: str, class_name: str) -> LinkMlSchema:
         name = f"{schema_name.lower()}:{class_name.lower()}"
         if name not in self.schemas:
-            raise KeyError(f"Schema '{name}' not found in registry")
+            raise MissingSchemaError(f"Schema '{name}' not found in registry")
         return self.schemas[name]
 
     def list(self) -> list[str]:
