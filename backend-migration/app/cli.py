@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import sys
 from dataclasses import asdict
@@ -9,6 +10,9 @@ from fastapi.encoders import jsonable_encoder
 
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
+
+logger = logging.getLogger(__name__)
+
 
 def _print_json(data: Any) -> None:
     """Print JSON-safe data to stdout."""
@@ -106,6 +110,7 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             f"No matches found for property '{args.property}' "
             f"in schema '{args.schema}' for URL '{args.url}'."
         )
+        logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)
 
@@ -158,12 +163,12 @@ def main() -> None:
     extract_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     extract_parser.add_argument(
         "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
+        help="Schema to analyze against (e.g. connoss, CODEMETA).",
     )
     extract_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_parser.add_argument(
         "--token",
@@ -181,7 +186,7 @@ def main() -> None:
         "extract_property",
         help=(
             "Extract a single property (value and source) for a repository. "
-            "Schema defaults to masmp if not given."
+            "Schema defaults to connoss if not given."
         ),
     )
     extract_prop_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
@@ -194,13 +199,13 @@ def main() -> None:
     )
     extract_prop_parser.add_argument(
         "--schema",
-        default="masmp",
-        help="Schema to use (default: masmp).",
+        default="connoss",
+        help="Schema to use (default: connoss).",
     )
     extract_prop_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_prop_parser.add_argument(
         "--token",
@@ -209,20 +214,20 @@ def main() -> None:
     extract_prop_parser.set_defaults(func=_extract_property_command)
 
     # comet-rs fairness {GIT_URL} {SCHEMA}
-    fairness_parser = subparsers.add_parser(
-        "fairness",
-        help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
-    )
-    fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
-    fairness_parser.add_argument(
-        "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
-    )
-    fairness_parser.add_argument(
-        "--token",
-        help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
-    )
-    fairness_parser.set_defaults(func=_fairness_command)
+    # fairness_parser = subparsers.add_parser(
+    #     "fairness",
+    #     help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
+    # )
+    # fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
+    # fairness_parser.add_argument(
+    #     "schema",
+    #     help="Schema to analyze against (e.g. connoss, CODEMETA).",
+    # )
+    # fairness_parser.add_argument(
+    #     "--token",
+    #     help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
+    # )
+    # fairness_parser.set_defaults(func=_fairness_command)
 
     args = parser.parse_args()
 
@@ -237,6 +242,7 @@ def main() -> None:
     try:
         args.func(args)
     except Exception as e:
+        logger.exception("comet-rs command failed")
         print(str(e), file=sys.stderr)
         sys.exit(1)
 

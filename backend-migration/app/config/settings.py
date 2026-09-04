@@ -1,15 +1,18 @@
 """
 Configuration settings
 """
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_SCHEMAS_PATH = str(BASE_DIR / "schemas")
 
 class Settings(BaseSettings):
     """Application settings"""
 
     # Scehma settings
-    comet_schemas_path: str
+    comet_schemas_path: str = DEFAULT_SCHEMAS_PATH
     
     # API settings
     api_title: str = "Metadata Extractor API"

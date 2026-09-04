@@ -113,172 +113,336 @@ classes:
 slots:
   codeRepository:
     slot_uri: sdo:codeRepository
+    categories:
+      - Minimum
   codeSampleType:
     slot_uri: sdo:codeSampleType
+    categories:
+      - Drop-it
   programmingLanguage:
     slot_uri: sdo:programmingLanguage
+    categories:
+      - Minimum
   runtimePlatform:
     slot_uri: sdo:runtimePlatform
+    categories:
+      - Minimum
   targetProduct:
     slot_uri: sdo:targetProduct
+    categories:
+      - Optional
   # Properties from Thing -> CreativeWork -> SoftwareApplication:
   applicationCategory:
     slot_uri: sdo:applicationCategory
+    categories:
+      - Recommended
   applicationSubCategory:
     slot_uri: sdo:applicationSubCategory
+    categories:
+      - Optional
   applicationSuite:
     slot_uri: sdo:applicationSuite
+    categories:
+      - Optional
   availableOnDevice:
     slot_uri: sdo:availableOnDevice
+    categories:
+      - Recommended
   countriesNotSupported:
     slot_uri: sdo:countriesNotSupported
+    categories:
+      - Optional
   countriesSupported:
     slot_uri: sdo:countriesSupported
+    categories:
+      - Optional
   downloadUrl:
     slot_uri: sdo:downloadUrl
+    categories:
+      - Recommended
   featureList:
     slot_uri: sdo:featureList
+    categories:
+      - Optional
   fileSize:
     slot_uri: sdo:fileSize
+    categories:
+      - Drop-it
   installUrl:
     slot_uri: sdo:installUrl
+    categories:
+      - Optional
   memoryRequirements:
     slot_uri: sdo:memoryRequirements
+    categories:
+      - Recommended
   operatingSystem:
     slot_uri: sdo:operatingSystem
+    categories:
+      - Recommended
   permissions:
     slot_uri: sdo:permissions
+    categories:
+      - Optional
   processorRequirements:
     slot_uri: sdo:processorRequirements
+    categories:
+      - Recommended
   releaseNotes:
     slot_uri: sdo:releaseNotes
+    categories:
+      - Recommended
   screenshot:
     slot_uri: sdo:screenshot
+    categories:
+      - Optional
   softwareAddOn:
     slot_uri: sdo:softwareAddOn
+    categories:
+      - Drop-it
   softwareHelp:
     slot_uri: sdo:softwareHelp
+    categories:
+      - Optional
   softwareRequirements:
     slot_uri: sdo:softwareRequirements
+    categories:
+      - Recommended
   softwareVersion:
     slot_uri: sdo:softwareVersion
+    categories:
+      - Recommended
   storageRequirements:
     slot_uri: sdo:storageRequirements
+    categories:
+      - Recommended
   supportingData:
     slot_uri: sdo:supportingData
+    categories:
+      - Recommended
   # Properties from Thing -> CreativeWork:
   author:
     slot_uri: sdo:author
+    categories:
+      - Minimum
   citation:
     slot_uri: sdo:citation
+    categories:
+      - Optional
   contributor:
     slot_uri: sdo:contributor
+    categories:
+      - Optional
   copyrightHolder:
     slot_uri: sdo:copyrightHolder
+    categories:
+      - Recommended
   copyrightYear:
     slot_uri: sdo:copyrightYear
+    categories:
+      - Optional
   dateCreated:
     slot_uri: sdo:dateCreated
+    categories:
+      - Minimum
   dateModified:
     slot_uri: sdo:dateModified
+    categories:
+      - Minimum
   datePublished:
     slot_uri: sdo:datePublished
+    categories:
+      - Recommended
   encodingFormat:
     slot_uri: sdo:encodingFormat
+    categories:
+      - Drop-it
   funder:
     slot_uri: sdo:funder
+    categories:
+      - Optional
   hasPart:
     slot_uri: sdo:hasPart
+    categories:
+      - Optional
   isAccessibleForFree:
     slot_uri: sdo:isAccessibleForFree
+    categories:
+      - Optional
   isPartOf:
     slot_uri: sdo:isPartOf
+    categories:
+      - Optional
   keywords:
     slot_uri: sdo:keywords
+    categories:
+      - Minimum
   license:
     slot_uri: sdo:license
+    categories:
+      - Minimum
   publisher:
     slot_uri: sdo:publisher
+    categories:
+      - Optional
   review:
     slot_uri: sdo:review
+    categories:
+      - Drop-it
   sponsor:
     slot_uri: sdo:sponsor
+    categories:
+      - Drop-it
   # Properties from Thing:
   description:
     slot_uri: sdo:description
+    categories:
+      - Minimum
   identifier:
     slot_uri: sdo:identifier
+    categories:
+      - Recommended
   name:
     slot_uri: sdo:name
+    categories:
+      - Minimum
   sameAs:
     slot_uri: sdo:sameAs
+    categories:
+      - Optional
   url:
     slot_uri: sdo:url
+    categories:
+      - Recommended
   # Properties outside the hierarchy from Thing -> CreativeWork -> WebPage:
   relatedLink:
     slot_uri: sdo:relatedLink
+    categories:
+      - Optional
   # Additional properties from Codemeta Thing -> CreativeWork -> Codemeta:Software:
   buildInstructions:
     slot_uri: cm:buildInstructions
+    categories:
+      - Optional
   continuousIntegration:
     slot_uri: cm:continuousIntegration
+    categories:
+      - Optional
   developmentStatus:
     slot_uri: cm:developmentStatus
+    categories:
+      - Recommended
   embargoEndDate:
     slot_uri: cm:embargoEndDate
+    categories:
+      - Optional
   hasSourceCode:
     slot_uri: cm:hasSourceCode
+    categories:
+      - Optional
   isSourceCodeOf:
     slot_uri: cm:isSourceCodeOf
+    categories:
+      - Optional
   issueTracker:
     slot_uri: cm:issueTracker
+    categories:
+      - Optional
   readme:
     slot_uri: cm:readme
+    categories:
+      - Recommended
   referencePublication:
     slot_uri: cm:referencePublication
+    categories:
+      - Recommended
   # Added in V4:
   relatedSoftware:
     slot_uri: sdo:relatedSoftware
+    categories:
+      - Optional
   contactPoint:
     slot_uri: sdo:contactPoint
+    categories:
+      - Recommended
   creditText:
     slot_uri: sdo:creditText
+    categories:
+      - Optional
   alternateName:
     slot_uri: sdo:alternateName
+    categories:
+      - Optional
   # extension set
   intendedUse:
-    slot_uri: sdo:intendedUse 
+    slot_uri: sdo:intendedUse
+    categories:
+      - Recommended
   applicationDomain:
     slot_uri: sdo:applicationDomain
+    categories:
+      - Recommended
   legalConsiderations:
     slot_uri: sdo:legalConsiderations
+    categories:
+      - Optional
   ethicalSocialConsiderations:
     slot_uri: sdo:ethicalSocialConsiderations
-  archivedAt :
-    slot_uri: sdo:archivedAt 
+    categories:
+      - Optional
+  archivedAt:
+    slot_uri: sdo:archivedAt
+    categories:
+      - Optional
   conditionsOfAccess:
     slot_uri: sdo:conditionsOfAccess
+    categories:
+      - Optional
   documentation:
     slot_uri: sdo:documentation
-  developerDocumentation :
-    slot_uri: cm:developerDocumentation 
+    categories:
+      - Recommended
+  developerDocumentation:
+    slot_uri: cm:developerDocumentation
+    categories:
+      - Optional
   userDocumentation:
     slot_uri: cm:userDocumentation
+    categories:
+      - Optional
   softwareInterface:
     slot_uri: sdo:softwareInterface
+    categories:
+      - Optional
   testedWith:
     slot_uri: sdo:testedWith
+    categories:
+      - Optional
   implementsSpecification:
     slot_uri: sdo:implementsSpecification
+    categories:
+      - Optional
   softwareContainer:
     slot_uri: sdo:softwareContainer
-  input :
-    slot_uri: sdo:input 
+    categories:
+      - Optional
+  input:
+    slot_uri: sdo:input
+    categories:
+      - Recommended
   output:
     slot_uri: sdo:output
+    categories:
+      - Recommended
   partOfCommunity:
     slot_uri: sdo:partOfCommunity
+    categories:
+      - Recommended
   latestRelease:
     slot_uri: sdo:latestRelease
+    categories:
+      - Recommended
   latestReleaseVersion:
     slot_uri: cm:latestReleaseVersion
+    categories:
+      - Recommended
