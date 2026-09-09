@@ -24,6 +24,7 @@ _pipeline_runner = ExtractionPipelineRunner()
 _schema_registry = LinkMlSchemaRegistry()
 
 _logging_configured = False
+_initialized = False
 
 def _configure_logging() -> None:
     """
@@ -64,13 +65,16 @@ def _configure_logging() -> None:
     logger.debug("Configured logging via basicConfig (level=%s).", log_level)
 
 def initialize():
-    _configure_logging()
-    schema_dir = settings.comet_schemas_path
-    if not schema_dir:
-        raise RuntimeError("COMET_SCHEMAS_PATH is not configured!")
-    logger.info("Loading schemas from %s", schema_dir)
-    loaded = _schema_registry.load(schema_dir)
-    logger.info("Loaded %d schema(s)", len(loaded))
+    global _initialized
+    if not _initialized:
+        _configure_logging()
+        schema_dir = settings.comet_schemas_path
+        if not schema_dir:
+            raise RuntimeError("COMET_SCHEMAS_PATH is not configured!")
+        logger.info("Loading schemas from %s", schema_dir)
+        loaded = _schema_registry.load(schema_dir)
+        logger.info("Loaded %d schema(s)", len(loaded))
+        _initialized = True
 
 def _create_extraction_use_case() -> tuple[ExtractMetadataUseCase, Optional[MetadataCollector]]:
     """

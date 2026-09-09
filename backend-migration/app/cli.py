@@ -235,9 +235,11 @@ def main() -> None:
     if getattr(args, "token", None) is None:
         repo_url = (getattr(args, "url", None) or "").lower()
         if "gitlab" in repo_url:
-            args.token = os.environ.get("GITLAB_TOKEN") or os.environ.get("GITHUB_TOKEN")
-        else:
-            args.token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITLAB_TOKEN")
+            args.token = os.environ.get("GITLAB_TOKEN")
+        elif "github" in repo_url:
+            args.token = os.environ.get("GITHUB_TOKEN") 
+        elif 'codeberg' in repo_url:
+            args.token = os.environ.get("CODEBERG_TOKEN")
 
     try:
         args.func(args)

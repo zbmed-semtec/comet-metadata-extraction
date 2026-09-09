@@ -1,7 +1,9 @@
 from datetime import date
 from typing import List, Optional, Union
-from pydantic import HttpUrl
+from pydantic import ConfigDict
 from app.layer_3.plugins.shared.types.json_ld_serializable import JsonLdSerializable
+
+HttpUrl = str 
 
 class Organization(JsonLdSerializable):
     # Properties from Organization
@@ -89,8 +91,7 @@ class Organization(JsonLdSerializable):
     subjectOf: Optional[Union[dict, List[dict]]] = None
     url: Optional[HttpUrl] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 Organization.model_rebuild()
