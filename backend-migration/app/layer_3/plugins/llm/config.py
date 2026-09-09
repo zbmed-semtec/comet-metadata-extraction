@@ -63,11 +63,5 @@ PROPERTY_RULES.setdefault(
 LICENSE_PATTERNS = [
     (item.get("pattern", ""), item.get("value", ""))
     for item in RETRIEVAL_CONFIG.get("license_patterns", [])
-    if isinstance(item, dict)
-]
-
-LICENSE_PATTERNS = [
-    (pattern, value)
-    for pattern, value in LICENSE_PATTERNS
-    if pattern and value
+    if isinstance(item, dict) and item.get("pattern") and item.get("value")
 ]

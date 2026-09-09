@@ -11,7 +11,7 @@ def build_prompt(property_name: str, context: str) -> str:
         f"You are extracting '{property_name}' from repository README chunks.\n"
         f"Rules: {rule_hint}\n"
         f"Expected value shape: {schema_hint}\n\n"
-        "No guessing. Return JSON only with keys: value, evidence, confidence.\n"
+        "No guessing. Return JSON only with the required keys: value, evidence, confidence.\n"
         "- value: extracted value or null\n"
         "- evidence: exact short quote from context or null\n"
         "- confidence: number from 0 to 1\n\n"
