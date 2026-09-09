@@ -53,6 +53,7 @@ class Settings(BaseSettings):
         ),
     )
 
+    # decorator for the base url if the user passes raw host strings "127.0.0.1:11435"
     @field_validator("llm_base_url", mode="before")
     @classmethod
     def normalize_llm_base_url(cls, value: object) -> str:
