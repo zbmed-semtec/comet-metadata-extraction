@@ -2,7 +2,7 @@
 Layer 2 — Application / use cases (`app.layer_2`).
 Orchestration: compose and run extraction pipeline, then build JSON-LD.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, Optional, Dict, Any, Callable
 from app.layer_2.contracts import ExtractionContext, ExtractionState, ExtractionPipeline, PipelineRunner, PipelineComposer
 from app.layer_1.schemas.base_schema import BaseSchema
@@ -30,6 +30,7 @@ class ExtractMetadataResult:
     """
     jsonld_document: dict
     extraction_metadata: Dict[str, Dict[str, Any]]  # entity_field -> {source, confidence}
+    extraction_state: Optional[ExtractionState] = None  # optional for testing/debugging
 
 
 class JSONLDBuilderBase(Protocol):
@@ -118,4 +119,5 @@ class ExtractMetadataUseCase:
         return ExtractMetadataResult(
             jsonld_document=jsonld_document,
             extraction_metadata={},
+            extraction_state=state
         )

@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class ExtractionPipelineRunner:
     """Implements app.layer_2.contracts.pipeline.PipelineRunner (structural typing, no inheritance needed)."""
-    def run(self, pipeline, context : ExtractionContext, state : ExtractionState) -> ExtractionState:
+    def run(self, pipeline: ExtractionPipeline, context : ExtractionContext, state : ExtractionState) -> ExtractionState:
         current = state
         errors  = dict()
         for step in pipeline.steps:
@@ -14,6 +14,6 @@ class ExtractionPipelineRunner:
                 current = step.extract(context, current)
             except Exception as exp:
                 logger.exception("step '%s' failed during extraction", step.name)
-                errors[step.name] = exp
+                errors[step.name] = str(exp)
         current.errors = errors
         return current
