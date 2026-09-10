@@ -18,24 +18,20 @@ def test_health_and_platforms(client):
 
 def test_metadata_plain_happy_path(client):
     payload = {"@type": "Software", "name": "X"}
-    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=(payload, None)):
+    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=(payload, None, None)):
         r = client.get("/api/metadata", params={"repo_url": "https://github.com/a/b", "schema": "connoss", "access_token": "t"})
     assert r.status_code == 200 and r.json()["results"] == payload and r.json()["status"] == "success"
 
 def test_metadata_enriched_returns_enriched_block(client):
-    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=({"@type":"Software"}, {"name": {"source": "API", "confidence": .9, "category": "recommended"}})):
+    with patch("app.layer_4.endpoints.metadata.run_extraction",
+               return_value=({"@type":"Software"}, {"name": {"source": "API", "confidence": .9, "category": "recommended"}}, None)):
         r = client.get("/api/metadata/enriched", params={"repo_url":"https://github.com/a/b"})
     assert r.status_code == 200 and r.json()["enriched_metadata"]["name"]["source"] == "API"
 
-def test_metadata_plain_value_error_returns_400_and_other_error_500(client):
-    with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=ValueError("bad")):
-        assert client.get("/api/metadata", params={"repo_url":"https://github.com/a/b"}).status_code == 400
-    with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=RuntimeError("boom")):
-        assert client.get("/api/metadata", params={"repo_url":"https://github.com/a/b"}).status_code == 500
-
 def test_property_endpoint_returns_value_source_confidence_and_propagates_errors(client):
     enriched = {"description": {"source": "API", "confidence": .5, "category": "recommended"}}
-    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=({"description": "Desc"}, enriched)):
+    with patch("app.layer_4.endpoints.metadata.run_extraction",
+               return_value=({"description": "Desc"}, enriched, None)):
         r = client.get("/api/metadata/property", params={"repo_url":"https://github.com/a/b", "property": "description"})
     assert r.status_code == 200 and r.json()["results"][0]["value"] == "Desc" and r.json()["results"][0]["source"] == "API"
     with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=ValueError("nope")):
@@ -48,12 +44,18 @@ def test_stream_endpoint_yields_progress_and_result_events(client):
         cb = kwargs["progress_callback"]
         for step in ("pipeline", "jsonld_build"):
             cb(step, "started"); cb(step, "completed")
-        return {"@type":"Software"}, {"name":{"source":"API","confidence":1,"category":"recommended"}}
+        return {"@type":"Software"}, {"name":{"source":"API","confidence":1,"category":"recommended"}}, None
     with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=fake_run):
         r = client.get("/api/metadata/stream", params={"repo_url":"https://github.com/a/b"})
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
     body = r.text
     assert "event: progress" in body and "event: result" in body
+
+def test_metadata_plain_value_error_returns_400_and_other_error_500(client):
+    with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=ValueError("bad")):
+        assert client.get("/api/metadata", params={"repo_url":"https://github.com/a/b"}).status_code == 400
+    with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=RuntimeError("boom")):
+        assert client.get("/api/metadata", params={"repo_url":"https://github.com/a/b"}).status_code == 500
 
 def test_run_extraction_returns_enriched_dict_when_requested():
     from app.layer_4.services.metadata_service import run_extraction
@@ -61,7 +63,7 @@ def test_run_extraction_returns_enriched_dict_when_requested():
         from app.layer_3.schemas.linkml.linkml_schema import LinkMlSchema
         sch = Mock(spec=LinkMlSchema); reg.get.return_value = sch
         uc, coll = Mock(), Mock(); uc.execute.return_value.jsonld_document = {"@type":"C"}; mk.return_value = (uc, coll)
-        doc, enr = run_extraction("u", "connoss", "t", with_enrichment=True)
+        doc, enr, col = run_extraction("u", "connoss", "t", with_enrichment=True)
     assert doc == {"@type":"C"} and enr == {"name": {"source": "X", "confidence": 1, "category": "recommended"}}
 
 def test_fairness_service_module_has_current_bug_no_pipeline_composer():
