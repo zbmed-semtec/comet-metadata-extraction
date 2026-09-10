@@ -13,6 +13,7 @@ class MetadataPlainResponse(BaseModel):
     schema_: str = Field(alias="schema", description="Schema used (maSMP or CODEMETA)")
     code_url: HttpUrl
     message: str
+    errors: Optional[Dict[str, str]] = None
     results: Dict[str, Any]
 
 
@@ -26,6 +27,7 @@ class MetadataEnrichedResponse(BaseModel):
     message: str
     results: Dict[str, Any]
     enriched_metadata: Dict[str, Any]
+    errors: Optional[Dict[str, str]] = None
 
 
 class FairnessResponse(BaseModel):
@@ -39,13 +41,9 @@ class FairnessResponse(BaseModel):
     results: Dict[str, Any]
     fairness: Dict[str, Any]
 
-    
-
-
 class SinglePropertyItem(BaseModel):
     """Single property value plus enrichment for a specific profile."""
 
-    profile: str
     value: Any
     source: Optional[Any] = None
     confidence: Optional[float] = None
@@ -61,4 +59,5 @@ class SinglePropertyResponse(BaseModel):
     message: str
     property: str
     results: List[SinglePropertyItem]
+    errors: Optional[Dict[str, str]] = None
 

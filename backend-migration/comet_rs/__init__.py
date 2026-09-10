@@ -52,14 +52,13 @@ def extract_property(
     a single synthetic \"codemeta\" profile is used.
     """
     initialize()
-    extracted_at, items = run_extraction(
+    return run_extraction(
         repo_url=repo_url,
         schema_name=schema_name,
         schema_class=schema_class,
         access_token=token,
         single_property=property_name,
     )
-    return extracted_at, items
 
 __all__ = ["extract_metadata", "extract_property"]
 

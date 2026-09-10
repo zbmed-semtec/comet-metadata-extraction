@@ -22,13 +22,19 @@ def _print_json(data: Any) -> None:
 
 def _extract_command(args: argparse.Namespace) -> None:
     initialize()
-    jsonld_document, enriched = run_extraction(
+    jsonld_document, enriched, state = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
         with_enrichment=args.with_enrichment,
         schema_class=args.schema_class,
     )
+
+    if state.errors:
+        logger.warning("Extraction completed with errors: %s", state.errors)
+        print("Extraction completed with errors:", file=sys.stderr)
+        for step_name, error in state.errors.items():
+            print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     result = {
         "schema": args.schema,
@@ -88,7 +94,7 @@ def _collect_property_results(
 
 def _extract_property_command(args: argparse.Namespace) -> None:
     initialize()
-    jsonld_document, enriched = run_extraction(
+    jsonld_document, enriched, state = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
@@ -113,6 +119,12 @@ def _extract_property_command(args: argparse.Namespace) -> None:
         logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)
+
+    if state.errors:
+        logger.warning("Extraction completed with errors: %s", state.errors)
+        print("Extraction completed with errors:", file=sys.stderr)
+        for step_name, error in state.errors.items():
+            print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     # Single flat dict: property_name, property_value, source(s), confidence
     first = result["matches"][0]

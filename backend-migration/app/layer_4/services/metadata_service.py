@@ -12,6 +12,7 @@ from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
 from app.layer_3.steps.contracts import ExtractionPipelineRunner
 from app.layer_2.use_cases.extract_metadata import ExtractMetadataUseCase
 from app.layer_4.builders.enriched_metadata import build_enriched_metadata
+from app.layer_2.contracts.step import ExtractionState
 from app.layer_3.schemas.linkml.linkml_schema_registry import LinkMlSchemaRegistry
 from app.config.settings import settings
 
@@ -103,12 +104,12 @@ def run_extraction(
     schema_class: str = "SoftwareSourceCode",
     progress_callback: Optional[Callable[[str, str], None]] = None,
     single_property: Optional[str] = None,
-) -> tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+) -> tuple[Dict[str, Any], Optional[Dict[str, Any]], ExtractionState]:
     """
     Core extraction runner shared by all extraction entry points.
 
     Returns:
-        (jsonld_document, enriched_metadata or None)
+        (jsonld_document, enriched_metadata or None, extraction_state)
     """
     logger.info(
         "Starting extraction: repo_url=%s schema=%s:%s single_property=%s",
@@ -132,5 +133,5 @@ def run_extraction(
 
     if with_enrichment:
         enriched = build_enriched_metadata(collector, schema)
-        return jsonld_document, enriched
-    return jsonld_document, None
+        return jsonld_document, enriched, result.extraction_state
+    return jsonld_document, None, result.extraction_state

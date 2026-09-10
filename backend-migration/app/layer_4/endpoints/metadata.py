@@ -52,7 +52,7 @@ async def extract_metadata_plain(
     """
     try:
 
-        jsonld_document, _ = run_extraction(
+        jsonld_document, _, state = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             schema_class=schema_class,
@@ -66,6 +66,7 @@ async def extract_metadata_plain(
             code_url=repo_url,
             message="Code analysis completed.",
             results=jsonld_document,
+            errors=state.errors if state and state.errors else None
         )
 
     except ValueError as e:
@@ -95,7 +96,7 @@ async def extract_metadata_enriched(
     """
     try:
 
-        jsonld_document, enriched = run_extraction(
+        jsonld_document, enriched, state = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             schema_class=schema_class,
@@ -113,6 +114,7 @@ async def extract_metadata_enriched(
             message="Code analysis completed.",
             results=jsonld_document,
             enriched_metadata=enriched,
+            errors=state.errors if state and state.errors else None
         )
 
     except ValueError as e:
@@ -153,16 +155,16 @@ async def _stream_metadata_events(
 
     def run_extraction_sync() -> None:
         try:
-            jsonld_document, enriched = run_extraction(
+            jsonld_document, enriched, state = run_extraction(
                 repo_url=repo_url,
                 schema_name=schema_name,
                 access_token=access_token,
                 with_enrichment=True,
                 progress_callback=progress_callback,
             )
-            result_holder.append(("ok", jsonld_document, enriched))
+            result_holder.append(("ok", jsonld_document, enriched, state))
         except Exception as e:
-            result_holder.append(("error", str(e), None))
+            result_holder.append(("error", str(e), None, None))
 
     loop = asyncio.get_event_loop()
     future = loop.run_in_executor(None, run_extraction_sync)
@@ -180,11 +182,11 @@ async def _stream_metadata_events(
     if not result_holder:
         yield _format_sse("error", {"detail": "Extraction produced no result."})
         return
-    status, first, second = result_holder[0]
+    status, first, second, third = result_holder[0]
     if status == "error":
         yield _format_sse("error", {"detail": first})
         return
-    jsonld_document, enriched = first, second
+    jsonld_document, enriched, state = first, second, third
     payload = {
         "status": "success",
         "schema": schema_name,
@@ -192,6 +194,7 @@ async def _stream_metadata_events(
         "message": "Code analysis completed.",
         "results": jsonld_document,
         "enriched_metadata": enriched or {},
+        "errors": state.errors if state and state.errors else None,
     }
     yield _format_sse("result", payload)
 
@@ -312,13 +315,13 @@ async def extract_single_property(
     """
     try:
 
-        jsonld_document, enriched = run_extraction(
+        jsonld_document, enriched, state = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             access_token=access_token,
             single_property=property_name,
             schema_class=schema_class,
-            with_enrichment=True
+            with_enrichment=True,
         )
         
         extraction_metadata = enriched.get(property_name)
@@ -332,9 +335,9 @@ async def extract_single_property(
                 code_url=repo_url,
                 message="Property extraction completed.",
                 property=property_name,
+                errors=state.errors if state and state.errors else None,
                 results=[
                     SinglePropertyItem(
-                        profile="",
                         value=value,
                         confidence=confidence,
                         source=source
