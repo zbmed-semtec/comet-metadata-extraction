@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # Pydantic settings
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(
+    env_file=".env",
+    case_sensitive=False,
+    extra="ignore",
+)
 
 
 settings = Settings()
