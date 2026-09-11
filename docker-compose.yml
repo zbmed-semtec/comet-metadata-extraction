@@ -1,5 +1,4 @@
 # Migration stack: Nuxt frontend + FastAPI backend
-# Run: docker compose up --build
 
 services:
   backend:
@@ -13,6 +12,9 @@ services:
       - app-network
 
   frontend:
+    profiles:
+      - frontend
+
     build:
       context: ./frontend-migration
     ports:
