@@ -26,7 +26,29 @@ class URLPatternMatcher(BasePlugin):
 
     @staticmethod
     def check_zenodo_badge(content: str) -> list[str]:
-        zenodo_pattern = r"https://(?:doi\.org/(\d+\.\d+/zenodo\.\d+)|zenodo\.org/records?/(\d+))"
-        matches = re.findall(zenodo_pattern, content)
-        extracted_ids = {doi if doi else f"10.5281/zenodo.{record_id}" for doi, record_id in matches}
-        return [f"https://doi.org/{doi}" for doi in extracted_ids]
+        """
+        Detects actual Zenodo DOI *badges* (badge image + link), not just
+        any bare Zenodo/DOI URL mentioned in text.
+
+        Matches patterns like:
+          [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1234567.svg)](https://doi.org/10.5281/zenodo.1234567)
+          <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.1234567.svg">
+        """
+        badge_pattern = (
+            r"\[!\[[^\]]*\]\("
+            r"https://zenodo\.org/badge/DOI/(\d+\.\d+/zenodo\.\d+)\.svg"
+            r"\)\]\("
+            r"https://doi\.org/\1"
+            r"\)"
+        )
+
+        html_badge_pattern = (
+            r"<img[^>]+src=[\"']https://zenodo\.org/badge/DOI/"
+            r"(\d+\.\d+/zenodo\.\d+)\.svg[\"'][^>]*>"
+        )
+
+        dois = set()
+        dois.update(re.findall(badge_pattern, content))
+        dois.update(re.findall(html_badge_pattern, content))
+
+        return [f"https://doi.org/{doi}" for doi in dois]

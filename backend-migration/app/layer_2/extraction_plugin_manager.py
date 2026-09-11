@@ -1,8 +1,12 @@
+import logging
 from app.layer_2.plugin_manager import PluginManager
 from app.layer_2.extraction_plugin import ExtractionPlugin
 from app.layer_2.contracts import ExtractionContext, ExtractionState
 
 SchemaPropery = str
+
+logger = logging.getLogger(__name__)
+
 
 class ExtractionPluginManager(PluginManager):
 
@@ -17,7 +21,7 @@ class ExtractionPluginManager(PluginManager):
                 helper.add(plugin_class.name)
                 self.metadata_providers[property] = helper
                 self.object_registry[plugin_class.name] = self._instantiate_plugin(plugin_class)
-        print("registered", plugin_class)
+        logger.info("registered %s", plugin_class)
 
     def select(self, schema_property: SchemaPropery, context: ExtractionContext) -> set[ExtractionPlugin]:
         result = set()
@@ -27,7 +31,7 @@ class ExtractionPluginManager(PluginManager):
             if instance.applicable(context):
                 result.add(instance)
         if len(result) < 1:
-            raise Warning(f"missing plugin to extract '{uri}'!")
+            logger.warning("missing plugin to extract '%s'!", uri)
         return result
 
     def extract(self, schema_property: SchemaPropery, context: ExtractionContext, state: ExtractionState) -> ExtractionState:

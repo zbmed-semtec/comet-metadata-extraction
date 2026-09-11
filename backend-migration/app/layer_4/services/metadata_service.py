@@ -2,6 +2,7 @@
 Metadata extraction service: wires adapters and use case, runs extraction.
 Single place for composition; endpoints call this instead of building the use case themselves.
 """
+import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, Callable, List
 
@@ -11,8 +12,11 @@ from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
 from app.layer_3.steps.contracts import ExtractionPipelineRunner
 from app.layer_2.use_cases.extract_metadata import ExtractMetadataUseCase
 from app.layer_4.builders.enriched_metadata import build_enriched_metadata
+from app.layer_2.contracts.step import ExtractionState
 from app.layer_3.schemas.linkml.linkml_schema_registry import LinkMlSchemaRegistry
 from app.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # Stateless components (created once, reused)
 _jsonld_builder = JSONLDBuilder()
@@ -20,18 +24,60 @@ _pipeline_composer = PluginPipelineComposer()
 _pipeline_runner = ExtractionPipelineRunner()
 _schema_registry = LinkMlSchemaRegistry()
 
+_logging_configured = False
+_initialized = False
+
+def _configure_logging() -> None:
+    """
+    Configure application-wide logging, but only if nothing else already has.
+
+    This module is used from three different contexts:
+      - FastAPI/Uvicorn: Uvicorn (or the app's own startup) typically attaches
+        handlers to the root logger before this runs. In that case we must NOT
+        touch logging config, or we risk duplicate handlers / clobbering
+        Uvicorn's formatting.
+      - Plain library usage: the importing application is responsible for its
+        own logging config. We should stay out of the way and only set up a
+        safety-net handler if truly nothing is configured (to avoid the
+        "No handlers could be found" / silently-swallowed-log problem).
+      - CLI tool: nobody else configures logging, so we're responsible for it.
+
+    We use a module-level flag to only attempt this once per process, and we
+    detect "already configured" by checking whether the root logger has any
+    handlers attached.
+    """
+    global _logging_configured
+    if _logging_configured:
+        return
+    _logging_configured = True
+
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        # Something else (Uvicorn, the host app, a test runner, ...) already
+        # configured logging. Respect it and don't touch anything.
+        logger.debug("Logging already configured by host process; skipping basicConfig.")
+        return
+
+    log_level = getattr(settings, "log_level", None) or "INFO"
+    logging.basicConfig(
+        level=getattr(logging, str(log_level).upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+    logger.debug("Configured logging via basicConfig (level=%s).", log_level)
+
 def initialize():
-    schema_dir = settings.comet_schemas_path
-    if not schema_dir:
-        raise RuntimeError("COMET_SCHEMAS_PATH is not configured!")
-    _schema_registry.load(schema_dir)
+    global _initialized
+    if not _initialized:
+        _configure_logging()
+        schema_dir = settings.comet_schemas_path
+        if not schema_dir:
+            raise RuntimeError("COMET_SCHEMAS_PATH is not configured!")
+        logger.info("Loading schemas from %s", schema_dir)
+        loaded = _schema_registry.load(schema_dir)
+        logger.info("Loaded %d schema(s)", len(loaded))
+        _initialized = True
 
-
-def _create_extraction_use_case(
-    repo_url: str,
-    access_token: Optional[str],
-    with_enrichment: bool,
-) -> tuple[ExtractMetadataUseCase, Optional[MetadataCollector]]:
+def _create_extraction_use_case() -> tuple[ExtractMetadataUseCase, Optional[MetadataCollector]]:
     """
     Internal helper to create a fully-wired ExtractMetadataUseCase plus optional collector.
 
@@ -50,62 +96,27 @@ def _create_extraction_use_case(
 
     return use_case, collector
 
-
 def run_extraction(
     repo_url: str,
     schema_name: str,
     access_token: Optional[str],
-    with_enrichment: bool,
+    with_enrichment: bool = False,
     schema_class: str = "SoftwareSourceCode",
-) -> tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
-    """
-    Run metadata extraction once.
-    
-    Returns:
-        (jsonld_document, enriched_metadata or None)
-    """
-    use_case, collector = _create_extraction_use_case(
-        repo_url=repo_url,
-        access_token=access_token,
-        with_enrichment=with_enrichment,
-    )
-
-    schema = _schema_registry.get(schema_name, schema_class)
-
-    result = use_case.execute(repo_url=repo_url, schema=schema, access_token=access_token)
-    jsonld_document = result.jsonld_document
-
-    if with_enrichment:
-        enriched = build_enriched_metadata(
-            collector,
-            schema,
-        )
-        return jsonld_document, enriched
-    return jsonld_document, None
-
-
-def run_extraction_with_progress(
-    repo_url: str,
-    schema_name: str,
-    access_token: Optional[str],
-    with_enrichment: bool,
     progress_callback: Optional[Callable[[str, str], None]] = None,
-    schema_class: str = "SoftwareSourceCode",
-) -> tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+    single_property: Optional[str] = None,
+) -> tuple[Dict[str, Any], Optional[Dict[str, Any]], ExtractionState]:
     """
-    Run metadata extraction with optional progress callbacks.
-
-    progress_callback(step_id, status) is called for each step; step_id is one of
-    platform, file_parsing, external_data, llm, jsonld_build; status is "started" or "completed".
+    Core extraction runner shared by all extraction entry points.
 
     Returns:
-        (jsonld_document, enriched_metadata or None)
+        (jsonld_document, enriched_metadata or None, extraction_state)
     """
-    use_case, collector = _create_extraction_use_case(
-        repo_url=repo_url,
-        access_token=access_token,
-        with_enrichment=with_enrichment,
+    logger.info(
+        "Starting extraction: repo_url=%s schema=%s:%s single_property=%s",
+        repo_url, schema_name, schema_class, single_property,
     )
+
+    use_case, collector = _create_extraction_use_case()
 
     schema = _schema_registry.get(schema_name, schema_class)
 
@@ -114,79 +125,13 @@ def run_extraction_with_progress(
         schema=schema,
         access_token=access_token,
         progress_callback=progress_callback,
+        single_property=single_property,
     )
     jsonld_document = result.jsonld_document
 
+    logger.info("Extraction completed for repo_url=%s", repo_url)
+
     if with_enrichment:
-        enriched = build_enriched_metadata(
-            collector,
-            schema,
-        )
-        return jsonld_document, enriched
-    return jsonld_document, None
-
-
-def run_single_property_extraction(
-    repo_url: str,
-    schema_name: str,
-    access_token: Optional[str],
-    property_name: str,
-    schema_class: str = "SoftwareSourceCode",
-) -> tuple[str, List[Dict[str, Any]]]:
-    """
-    Run extraction with enrichment and project down to a single property's
-    value, source, and confidence.
-
-    Returns:
-        (extracted_at_iso, [ {profile, value, source, confidence}, ... ])
-    """
-    schema = _schema_registry.get(schema_name, schema_class)
-
-    jsonld_document, enriched = run_extraction(
-        repo_url=repo_url,
-        schema=schema,
-        access_token=access_token,
-        with_enrichment=True,
-        schema_class=schema_class,
-    )
-
-    extracted_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-    results: List[Dict[str, Any]] = []
-
-    enriched = enriched or {}
-
-    if schema == "CODEMETA":
-        value = jsonld_document.get(property_name)
-        profile_key = "codemeta"
-        profile_meta = enriched.get(profile_key, {})
-        record = profile_meta.get(property_name, {})
-        results.append(
-            {
-                "profile": profile_key,
-                "value": value,
-                "source": record.get("source"),
-                "confidence": record.get("confidence"),
-            }
-        )
-        return extracted_at, results
-
-    # maSMP profiles – property may appear in SoftwareSourceCode and/or SoftwareApplication
-    for profile_key in ("maSMP:SoftwareSourceCode", "maSMP:SoftwareApplication"):
-        profile_data = jsonld_document.get(profile_key)
-        if not isinstance(profile_data, dict):
-            continue
-        if property_name not in profile_data:
-            continue
-        value = profile_data.get(property_name)
-        profile_meta = enriched.get(profile_key, {})
-        record = profile_meta.get(property_name, {})
-        results.append(
-            {
-                "profile": profile_key,
-                "value": value,
-                "source": record.get("source"),
-                "confidence": record.get("confidence"),
-            }
-        )
-
-    return extracted_at, results
+        enriched = build_enriched_metadata(collector, schema)
+        return jsonld_document, enriched, result.extraction_state
+    return jsonld_document, None, result.extraction_state

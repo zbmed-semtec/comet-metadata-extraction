@@ -8,7 +8,10 @@ class JSONLDBuilder(JSONLDBuilderBase):
     def build_jsonld(self, metadata: MetadataCollector, schema: BaseSchema) -> Dict[str, Any]:
 
         context = schema.build_context()
-        result = {"@context": context}
+        result = {
+            "@context": context,
+            "@type": schema.get_class_name()
+        }
         
         for property_name in schema.get_property_list():
             uri = schema.get_uri(property_name)

@@ -6,6 +6,8 @@ from pathlib import Path
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_SCHEMAS_PATH = str(BASE_DIR / "schemas")
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
     )
       
     # Scehma settings
-    comet_schemas_path: str
+    comet_schemas_path: str = DEFAULT_SCHEMAS_PATH
     
     # API settings
     api_title: str = "Metadata Extractor API"

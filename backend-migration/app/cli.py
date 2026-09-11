@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import sys
 from dataclasses import asdict
@@ -10,7 +11,9 @@ from fastapi.encoders import jsonable_encoder
 from app.config.settings import settings
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
-from app.layer_3.plugins.llm.bootstrap import bootstrap_ollama_if_configured
+
+logger = logging.getLogger(__name__)
+
 
 def _print_json(data: Any) -> None:
     """Print JSON-safe data to stdout."""
@@ -20,15 +23,20 @@ def _print_json(data: Any) -> None:
 
 
 def _extract_command(args: argparse.Namespace) -> None:
-    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
     initialize()
-    jsonld_document, enriched = run_extraction(
+    jsonld_document, enriched, state = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
         with_enrichment=args.with_enrichment,
         schema_class=args.schema_class,
     )
+
+    if state.errors:
+        logger.warning("Extraction completed with errors: %s", state.errors)
+        print("Extraction completed with errors:", file=sys.stderr)
+        for step_name, error in state.errors.items():
+            print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     result = {
         "schema": args.schema,
@@ -87,13 +95,14 @@ def _collect_property_results(
     }
 
 def _extract_property_command(args: argparse.Namespace) -> None:
-    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
-    jsonld_document, enriched = run_extraction(
+    initialize()
+    jsonld_document, enriched, state = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
         with_enrichment=True,
         schema_class=args.schema_class,
+        single_property=args.property,
     )
 
     result = _collect_property_results(
@@ -109,8 +118,15 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             f"No matches found for property '{args.property}' "
             f"in schema '{args.schema}' for URL '{args.url}'."
         )
+        logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)
+
+    if state.errors:
+        logger.warning("Extraction completed with errors: %s", state.errors)
+        print("Extraction completed with errors:", file=sys.stderr)
+        for step_name, error in state.errors.items():
+            print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     # Single flat dict: property_name, property_value, source(s), confidence
     first = result["matches"][0]
@@ -128,7 +144,6 @@ def _fairness_command(args: argparse.Namespace) -> None:
     """
     Compute a FAIRness report for a repository and print JSON.
     """
-    bootstrap_ollama_if_configured(log_prefix="cli", strict=True)
     jsonld_document, fairness_report = run_fairness_assessment(
         repo_url=args.url,
         schema=args.schema,
@@ -162,12 +177,12 @@ def main() -> None:
     extract_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
     extract_parser.add_argument(
         "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
+        help="Schema to analyze against (e.g. connoss, CODEMETA).",
     )
     extract_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_parser.add_argument(
         "--token",
@@ -185,7 +200,7 @@ def main() -> None:
         "extract_property",
         help=(
             "Extract a single property (value and source) for a repository. "
-            "Schema defaults to masmp if not given."
+            "Schema defaults to connoss if not given."
         ),
     )
     extract_prop_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
@@ -198,13 +213,13 @@ def main() -> None:
     )
     extract_prop_parser.add_argument(
         "--schema",
-        default="masmp",
-        help="Schema to use (default: masmp).",
+        default="connoss",
+        help="Schema to use (default: connoss).",
     )
     extract_prop_parser.add_argument(
         "--schema-class",
-        default="SoftwareApplication",
-        help="Schema class to use (default: SoftwareApplication).",
+        default="software",
+        help="Schema class to use (default: software).",
     )
     extract_prop_parser.add_argument(
         "--token",
@@ -213,20 +228,20 @@ def main() -> None:
     extract_prop_parser.set_defaults(func=_extract_property_command)
 
     # comet-rs fairness {GIT_URL} {SCHEMA}
-    fairness_parser = subparsers.add_parser(
-        "fairness",
-        help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
-    )
-    fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
-    fairness_parser.add_argument(
-        "schema",
-        help="Schema to analyze against (e.g. masmp, CODEMETA).",
-    )
-    fairness_parser.add_argument(
-        "--token",
-        help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
-    )
-    fairness_parser.set_defaults(func=_fairness_command)
+    # fairness_parser = subparsers.add_parser(
+    #     "fairness",
+    #     help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
+    # )
+    # fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
+    # fairness_parser.add_argument(
+    #     "schema",
+    #     help="Schema to analyze against (e.g. connoss, CODEMETA).",
+    # )
+    # fairness_parser.add_argument(
+    #     "--token",
+    #     help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
+    # )
+    # fairness_parser.set_defaults(func=_fairness_command)
 
     args = parser.parse_args()
 
@@ -234,13 +249,16 @@ def main() -> None:
     if getattr(args, "token", None) is None:
         repo_url = (getattr(args, "url", None) or "").lower()
         if "gitlab" in repo_url:
-            args.token = os.environ.get("GITLAB_TOKEN") or os.environ.get("GITHUB_TOKEN")
-        else:
-            args.token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITLAB_TOKEN")
+            args.token = os.environ.get("GITLAB_TOKEN")
+        elif "github" in repo_url:
+            args.token = os.environ.get("GITHUB_TOKEN") 
+        elif 'codeberg' in repo_url:
+            args.token = os.environ.get("CODEBERG_TOKEN")
 
     try:
         args.func(args)
     except Exception as e:
+        logger.exception("comet-rs command failed")
         print(str(e), file=sys.stderr)
         sys.exit(1)
 

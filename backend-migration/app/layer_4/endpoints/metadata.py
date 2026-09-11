@@ -16,12 +16,11 @@ from app.layer_4.schemas.metadata import (
     MetadataEnrichedResponse,
     MetadataPlainResponse,
     SinglePropertyResponse,
+    SinglePropertyItem
 )
 from app.layer_4.services import fairness_service
 from app.layer_4.services.metadata_service import (
     run_extraction,
-    run_extraction_with_progress,
-    run_single_property_extraction,
 )
 from app.layer_2.use_cases.extract_metadata import EXTRACTION_STEPS
 
@@ -38,15 +37,12 @@ async def extract_metadata_plain(
         ...,
         description="URL of the code repository (GitHub, GitLab)",
     ),
-    schema: str = Query(
-        "maSMP",
-        description="Schema to analyze against",
-        enum=["maSMP", "CODEMETA"],
-    ),
+    schema: str = 'ConnOSS',
     access_token: Optional[str] = Query(
         None,
         description="Optional access token for private repositories",
     ),
+    schema_class:str="Software"
 ) -> MetadataPlainResponse:
     """
     Extract metadata and return **only** the maSMP/CODEMETA JSON-LD.
@@ -56,9 +52,10 @@ async def extract_metadata_plain(
     """
     try:
 
-        jsonld_document, _ = run_extraction(
+        jsonld_document, _, state = run_extraction(
             repo_url=str(repo_url),
-            schema=schema,
+            schema_name=schema,
+            schema_class=schema_class,
             access_token=access_token,
             with_enrichment=False,
         )
@@ -69,6 +66,7 @@ async def extract_metadata_plain(
             code_url=repo_url,
             message="Code analysis completed.",
             results=jsonld_document,
+            errors=state.errors if state and state.errors else None
         )
 
     except ValueError as e:
@@ -83,12 +81,12 @@ async def extract_metadata_enriched(
         ...,
         description="URL of the code repository (GitHub, GitLab)",
     ),
-    schema: str = 'maSMP',
+    schema: str = 'ConnOSS',
     access_token: Optional[str] = Query(
         None,
         description="Optional access token for private repositories",
     ),
-    schema_class:str="SoftwareSourceCode"
+    schema_class:str="Software"
 ) -> MetadataEnrichedResponse:
     """
     Extract metadata and return JSON-LD **plus** per-property enrichment.
@@ -98,7 +96,7 @@ async def extract_metadata_enriched(
     """
     try:
 
-        jsonld_document, enriched = run_extraction(
+        jsonld_document, enriched, state = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             schema_class=schema_class,
@@ -116,6 +114,7 @@ async def extract_metadata_enriched(
             message="Code analysis completed.",
             results=jsonld_document,
             enriched_metadata=enriched,
+            errors=state.errors if state and state.errors else None
         )
 
     except ValueError as e:
@@ -137,8 +136,9 @@ def _format_sse(event: str, data: dict) -> str:
 
 async def _stream_metadata_events(
     repo_url: str,
-    schema: str,
+    schema_name: str,
     access_token: Optional[str],
+    schema_class: str,
 ):
     """Async generator that yields SSE events: progress for each step, then enriched result or error."""
     progress_queue = queue.Queue()
@@ -155,16 +155,16 @@ async def _stream_metadata_events(
 
     def run_extraction_sync() -> None:
         try:
-            jsonld_document, enriched = run_extraction_with_progress(
+            jsonld_document, enriched, state = run_extraction(
                 repo_url=repo_url,
-                schema_name=schema,
+                schema_name=schema_name,
                 access_token=access_token,
                 with_enrichment=True,
                 progress_callback=progress_callback,
             )
-            result_holder.append(("ok", jsonld_document, enriched))
+            result_holder.append(("ok", jsonld_document, enriched, state))
         except Exception as e:
-            result_holder.append(("error", str(e), None))
+            result_holder.append(("error", str(e), None, None))
 
     loop = asyncio.get_event_loop()
     future = loop.run_in_executor(None, run_extraction_sync)
@@ -182,18 +182,19 @@ async def _stream_metadata_events(
     if not result_holder:
         yield _format_sse("error", {"detail": "Extraction produced no result."})
         return
-    status, first, second = result_holder[0]
+    status, first, second, third = result_holder[0]
     if status == "error":
         yield _format_sse("error", {"detail": first})
         return
-    jsonld_document, enriched = first, second
+    jsonld_document, enriched, state = first, second, third
     payload = {
         "status": "success",
-        "schema": schema,
+        "schema": schema_name,
         "code_url": repo_url,
         "message": "Code analysis completed.",
         "results": jsonld_document,
         "enriched_metadata": enriched or {},
+        "errors": state.errors if state and state.errors else None,
     }
     yield _format_sse("result", payload)
 
@@ -204,15 +205,12 @@ async def extract_metadata_stream(
         ...,
         description="URL of the code repository (GitHub, GitLab)",
     ),
-    schema: str = Query(
-        "maSMP",
-        description="Schema to analyze against",
-        enum=["maSMP", "CODEMETA"],
-    ),
+    schema: str = 'ConnOSS',
     access_token: Optional[str] = Query(
         None,
         description="Optional access token for private repositories",
     ),
+    schema_class:str="Software"
 ):
     """
     Extract metadata with live progress, then return enriched result (SSE).
@@ -228,8 +226,9 @@ async def extract_metadata_stream(
     return StreamingResponse(
         _stream_metadata_events(
             repo_url=str(repo_url),
-            schema=schema,
+            schema_name=schema,
             access_token=access_token,
+            schema_class=schema_class,
         ),
         media_type="text/event-stream",
         headers={
@@ -240,53 +239,53 @@ async def extract_metadata_stream(
     )
 
 
-@router.get("/fairness", response_model=FairnessResponse)
-async def get_fairness(
-    repo_url: HttpUrl = Query(
-        ...,
-        description="URL of the code repository (GitHub, GitLab)",
-    ),
-    schema: str = Query(
-        "maSMP",
-        description="Schema to analyze against",
-        enum=["maSMP", "CODEMETA"],
-    ),
-    access_token: Optional[str] = Query(
-        None,
-        description="Optional access token for private repositories",
-    ),
-) -> FairnessResponse:
-    """
-    Compute a FAIRness report for a repository.
+# @router.get("/fairness", response_model=FairnessResponse)
+# async def get_fairness(
+#     repo_url: HttpUrl = Query(
+#         ...,
+#         description="URL of the code repository (GitHub, GitLab)",
+#     ),
+#     schema: str = Query(
+#         "maSMP",
+#         description="Schema to analyze against",
+#         enum=["maSMP", "CODEMETA"],
+#     ),
+#     access_token: Optional[str] = Query(
+#         None,
+#         description="Optional access token for private repositories",
+#     ),
+# ) -> FairnessResponse:
+#     """
+#     Compute a FAIRness report for a repository.
 
-    Returns the underlying JSON-LD plus FAIRness scores for F/A/I/R principles.
-    """
-    try:
+#     Returns the underlying JSON-LD plus FAIRness scores for F/A/I/R principles.
+#     """
+#     try:
 
-        jsonld_document, fairness_report = fairness_service.run_fairness_assessment(
-            repo_url=str(repo_url),
-            schema=schema,
-            access_token=access_token,
-            with_enrichment=True,
-        )
+#         jsonld_document, fairness_report = fairness_service.run_fairness_assessment(
+#             repo_url=str(repo_url),
+#             schema=schema,
+#             access_token=access_token,
+#             with_enrichment=True,
+#         )
 
-        # Convert dataclass to plain dict
-        from dataclasses import asdict
+#         # Convert dataclass to plain dict
+#         from dataclasses import asdict
 
-        fairness_dict = asdict(fairness_report)
+#         fairness_dict = asdict(fairness_report)
 
-        return FairnessResponse(
-            status="success",
-            schema_=schema,
-            code_url=repo_url,
-            message="FAIRness assessment completed.",
-            results=jsonld_document,
-            fairness=fairness_dict,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+#         return FairnessResponse(
+#             status="success",
+#             schema_=schema,
+#             code_url=repo_url,
+#             message="FAIRness assessment completed.",
+#             results=jsonld_document,
+#             fairness=fairness_dict,
+#         )
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/metadata/property", response_model=SinglePropertyResponse)
@@ -295,19 +294,16 @@ async def extract_single_property(
         ...,
         description="URL of the code repository (GitHub, GitLab)",
     ),
-    schema: str = Query(
-        "maSMP",
-        description="Schema to analyze against",
-        enum=["maSMP", "CODEMETA"],
+    schema: str = 'ConnOSS',
+    access_token: Optional[str] = Query(
+        None,
+        description="Optional access token for private repositories",
     ),
+    schema_class:str="Software",
     property_name: str = Query(
         ...,
         alias="property",
         description="JSON-LD property key to extract (e.g. softwareRequirements, license)",
-    ),
-    access_token: Optional[str] = Query(
-        None,
-        description="Optional access token for private repositories",
     ),
 ) -> SinglePropertyResponse:
     """
@@ -319,22 +315,45 @@ async def extract_single_property(
     """
     try:
 
-        extracted_at, items = run_single_property_extraction(
+        jsonld_document, enriched, state = run_extraction(
             repo_url=str(repo_url),
-            schema=schema,
+            schema_name=schema,
             access_token=access_token,
-            property_name=property_name,
+            single_property=property_name,
+            schema_class=schema_class,
+            with_enrichment=True,
         )
-
-        return SinglePropertyResponse(
-            status="success",
-            schema_=schema,
-            code_url=repo_url,
-            message="Property extraction completed.",
-            property=property_name,
-            extracted_at=extracted_at,
-            results=items,
-        )
+        
+        extraction_metadata = enriched.get(property_name)
+        value = jsonld_document.get(property_name)
+        if extraction_metadata:
+            confidence = extraction_metadata.get("confidence")
+            source = extraction_metadata.get("source")
+            return SinglePropertyResponse(
+                status="success",
+                schema_=schema_class,
+                code_url=repo_url,
+                message="Property extraction completed.",
+                property=property_name,
+                errors=state.errors if state and state.errors else None,
+                results=[
+                    SinglePropertyItem(
+                        value=value,
+                        confidence=confidence,
+                        source=source
+                    )
+                ],
+            )
+        else:
+            return SinglePropertyResponse(
+                status="failure",
+                schema_=schema_class,
+                code_url=repo_url,
+                message=f"Property '{property_name}' not found in the extracted metadata.",
+                property=property_name,
+                errors=state.errors if state and state.errors else None,
+                results=[],
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
