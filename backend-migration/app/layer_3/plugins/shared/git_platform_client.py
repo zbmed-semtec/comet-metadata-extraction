@@ -15,10 +15,11 @@ from dataclasses import dataclass
 
 import yaml
 
-from app.layer_3.plugins.shared.caching_http_client import CachingHttpClient
+from app.layer_3.plugins.shared.foundation.caching_http_client import CachingHttpClient
 from app.layer_3.steps.contracts import ExtractionContext, ExtractionState
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
 from app.layer_3.plugins.shared.bibtex import parse_bibtex
+from app.layer_3.plugins.shared.types.person import Person
 
 class RepositoryItem(ABC):
     """Thin wrapper around a platform's raw JSON representation of a single
@@ -139,7 +140,7 @@ class GitPlatformClient(CachingHttpClient, ABC):
         pass
 
     @abstractmethod
-    def get_contributors(self) -> list:
+    def get_contributors(self) -> list[Person]:
         """Fetches the contributor activity data for the repository."""
         pass
 
@@ -306,6 +307,15 @@ class GitPlatformClient(CachingHttpClient, ABC):
         """Finds files in the repository whose names suggest they are changelog files."""
         return self._discover_files_by_prefix("changelog")
 
+    def discover_contributors_candidates(self) -> list[RepositoryItem]:
+        """Finds files in the repository whose names suggest they list contributors (e.g. CONTRIBUTORS.md, CONTRIBUTORS.txt)."""
+        return self._discover_files_by_prefix("contributors")
+
+    def get_contributors_candidate_files(self) -> list[RepositoryFile]:
+        """Fetches the content of all discovered CONTRIBUTORS candidate files."""
+        candidates = self.discover_contributors_candidates()
+        return self.get_multiple_files([c.path for c in candidates])
+
     def get_multiple_files(self, paths: list[str]) -> list[RepositoryFile]:
         files = []
         for path in paths:
@@ -370,7 +380,7 @@ class GitPlatformClient(CachingHttpClient, ABC):
             self._dois_from_readme = result
         return self._dois_from_readme
     
-    def get_dois_from_parsed_citaitons(self) -> set[str]:
+    def get_dois_from_parsed_citations(self) -> set[str]:
         if self._dois_from_citation is None:
             citations = self.get_parsed_citations()
             identifiers = set()

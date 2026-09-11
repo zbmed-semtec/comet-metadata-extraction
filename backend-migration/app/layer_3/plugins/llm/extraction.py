@@ -16,8 +16,7 @@ from app.layer_3.plugins.llm.retrieval import (
     retrieve_top_chunks,
     split_with_metadata,
 )
-from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
-
+from app.layer_3.plugins.llm.foundation import LlmBaseExtractor
 
 def extract_json(text: str) -> dict:
     """Parse an LLM response into an extraction-result dictionary."""
@@ -107,7 +106,7 @@ def extract_property(property_name: str, readme_text: str, provider: str, model:
     return data
 
 
-class LlmNameExtractor(GitPlatformBaseExtractor):
+class LlmNameExtractor(LlmBaseExtractor):
     """Extract a repository's ``schema:name`` from README content using an LLM."""
 
     extracts = {"https://schema.org/name"}
@@ -195,7 +194,7 @@ def normalize_readme_property(value: Any, value_type: str) -> Any:
     return None
 
 
-class LlmReadmePropertyExtractor(GitPlatformBaseExtractor):
+class LlmReadmePropertyExtractor(LlmBaseExtractor):
     """Shared README LLM extraction for one configured schema property.
 
     Subclasses mirror ``LlmNameExtractor``: one plugin per prompt property.

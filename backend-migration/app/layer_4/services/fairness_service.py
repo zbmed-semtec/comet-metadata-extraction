@@ -1,4 +1,7 @@
 """
+AS OF 2026-06 THIS IS CURRENTLY ON HOLD.
+THE FAIRness ASSESSMENT MIGHT BE REWORKED AT A LATER DATE.
+
 Metadata + FAIRness service.
 
 Provides a single entry point for running extraction and FAIRness assessment
@@ -12,14 +15,14 @@ from typing import Dict, Optional, Tuple
 
 from app.layer_2.use_cases.extract_metadata import ExtractMetadataUseCase
 from app.layer_3.evaluators.fairness_evaluator import evaluate_fairness_from_metadata
-from app.layer_3.composers import PipelineComposer
+from app.layer_2.contracts import PipelineComposer
 from app.layer_3.builders.jsonld_builder import JSONLDBuilder
 from app.layer_3.steps.contracts import ExtractionPipelineRunner
 from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
 
 
 _jsonld_builder = JSONLDBuilder()
-_pipeline_composer = PipelineComposer()
+# _pipeline_composer = PipelineComposer()
 _pipeline_runner = ExtractionPipelineRunner()
 
 

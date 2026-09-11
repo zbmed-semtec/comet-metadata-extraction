@@ -3,7 +3,8 @@ metadata fields from a repository's GitHub API data, CITATION.cff files,
 README files, and license files."""
 
 from app.layer_3.plugins.github.github_base_extractor import GitHubBaseExtractor
-from app.layer_3.plugins.shared.git_platform_codemeta_extractor import GitPlatformCodemetaExtractor
+from app.layer_3.plugins.shared.json_files.connoss_json import GitPlatformConnossExtractor
+from app.layer_3.plugins.shared.json_files.codemeta_json import GitPlatformCodemetaExtractor
 from app.layer_3.plugins.shared.collection import (
     GitPlatformDescriptionExtractor
     ,GitPlatformNameExtractor
@@ -203,3 +204,7 @@ class GitHubDocumentationExtractor(GitPlatformDocumentationExtractor, GitHubBase
 class GitHubCodemetaExtractor(GitPlatformCodemetaExtractor, GitHubBaseExtractor):
     """extracts metadata from a repository's codemeta.json file"""
     name = "github.codemeta_extractor"
+
+class GitHubConnossExtractor(GitPlatformConnossExtractor, GitHubBaseExtractor):
+    """extracts metadata from a repository's connoss.json file"""
+    name = "github.connoss_extractor"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
-import sys
 import subprocess
 import time
 from urllib.parse import urlparse
@@ -12,6 +12,7 @@ import requests
 from app.config.settings import settings
 from app.layer_3.plugins.llm.config import SYSTEM_PROMPTS
 
+logger = logging.getLogger(__name__)
 
 def check_provider_ready(provider: str, model: str, base_url: str, timeout: int = 10) -> tuple[bool, str]:
     """Verify that a supported local provider is reachable and hosts a model."""
@@ -43,14 +44,12 @@ def check_provider_ready(provider: str, model: str, base_url: str, timeout: int 
 
     return False, f"Unsupported provider: {provider}"
 
-
 def _ollama_host_from_base_url(base_url: str) -> str:
     """Convert a base URL into the host format Ollama expects."""
     parsed = urlparse(base_url if "://" in base_url else f"http://{base_url}")
     hostname = parsed.hostname or "127.0.0.1"
     port = parsed.port or 11434
     return f"{hostname}:{port}"
-
 
 def ensure_ollama_running(base_url: str, timeout: int = 10) -> tuple[bool, str]:
     """Start `ollama serve` if needed and wait briefly for it to accept requests."""
@@ -94,7 +93,6 @@ def ensure_ollama_running(base_url: str, timeout: int = 10) -> tuple[bool, str]:
 
     return False, f"Started Ollama but it did not respond within {timeout}s: {last_error}"
 
-
 def activate_ollama_model(base_url: str, model: str, timeout: int = 420) -> tuple[bool, str]:
     """Warm up an Ollama model once the server is reachable."""
     endpoint = base_url.rstrip("/") + "/api/generate"
@@ -112,7 +110,6 @@ def activate_ollama_model(base_url: str, model: str, timeout: int = 420) -> tupl
         return True, f"Ollama model {model} activated."
     except Exception as exc:
         return False, f"Failed to activate Ollama model {model}: {exc}"
-
 
 def pull_ollama_model(base_url: str, model: str, timeout: int = 300) -> tuple[bool, str]:
     """Pull an Ollama model via the `ollama` CLI and wait until it's available.
@@ -147,11 +144,10 @@ def pull_ollama_model(base_url: str, model: str, timeout: int = 300) -> tuple[bo
 
     return False, f"Model pull did not result in available model within timeout: {last_msg}"
 
-
 def run_llm(prompt: str, provider: str, model: str, base_url: str, timeout: int = 420) -> str:
     """Submit an extraction prompt to Ollama or vLLM."""
     provider = provider.lower().strip()
-    print(f"[enrichment] Using LLM with {provider}:{model}", file=sys.stderr)
+    logger.info("[enrichment] Using LLM with %s:%s", provider, model)
 
     if provider == "ollama":
         endpoint = base_url.rstrip("/") + "/api/generate"
@@ -184,7 +180,6 @@ def run_llm(prompt: str, provider: str, model: str, base_url: str, timeout: int 
         return data["choices"][0]["message"]["content"]
 
     raise RuntimeError(f"Unsupported provider: {provider}")
-
 
 def resolve_model_config() -> tuple[str, str, str, str]:
     """Read the active LLM provider, model, and endpoint from settings."""
