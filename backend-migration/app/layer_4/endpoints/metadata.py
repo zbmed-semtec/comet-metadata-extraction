@@ -12,24 +12,21 @@ from fastapi.responses import StreamingResponse
 from pydantic import HttpUrl
 
 from app.layer_4.schemas.metadata import (
-    FairnessResponse,
     MetadataEnrichedResponse,
     MetadataPlainResponse,
     SinglePropertyResponse,
     SinglePropertyItem
 )
-from app.layer_4.services import fairness_service
 from app.layer_4.services.metadata_service import (
     run_extraction,
+    ExtractionResult,
 )
 from app.layer_2.use_cases.extract_metadata import EXTRACTION_STEPS
 
 # Step ID -> human-readable label for SSE progress events
 STEP_LABELS = {step_id: label for step_id, label in EXTRACTION_STEPS}
 
-
 router = APIRouter(prefix="/api", tags=["Metadata"])
-
 
 @router.get("/metadata", response_model=MetadataPlainResponse)
 async def extract_metadata_plain(
@@ -52,7 +49,7 @@ async def extract_metadata_plain(
     """
     try:
 
-        jsonld_document, _, state = run_extraction(
+        result = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             schema_class=schema_class,
@@ -65,15 +62,14 @@ async def extract_metadata_plain(
             schema_=schema,
             code_url=repo_url,
             message="Code analysis completed.",
-            results=jsonld_document,
-            errors=state.errors if state and state.errors else None
+            results=result.jsonld_document,
+            errors=result.extraction_state.errors if result.extraction_state and result.extraction_state.errors else None
         )
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 
 @router.get("/metadata/enriched", response_model=MetadataEnrichedResponse)
 async def extract_metadata_enriched(
@@ -96,32 +92,34 @@ async def extract_metadata_enriched(
     """
     try:
 
-        jsonld_document, enriched, state = run_extraction(
+        result = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             schema_class=schema_class,
             access_token=access_token,
             with_enrichment=True,
+            fairness_assessment=True,
         )
 
-        if not enriched:
-            enriched = {}
+        enriched = result.enriched_metadata or {}
 
         return MetadataEnrichedResponse(
             status="success",
             schema_=schema,
             code_url=repo_url,
             message="Code analysis completed.",
-            results=jsonld_document,
+            results=result.jsonld_document,
             enriched_metadata=enriched,
-            errors=state.errors if state and state.errors else None
+            # due to the way fairness is computed, we only include it for ConnOSS schema
+            fairness=result.fairness_report if result.fairness_report and schema.lower() == "connoss" else None,
+            errors=result.extraction_state.errors if result.extraction_state and result.extraction_state.errors else None,
+            alternatives=result.extraction_state.metadata_collector.data if result.extraction_state and result.extraction_state.metadata_collector else None
         )
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 
 def _format_sse(event: str, data: dict) -> str:
     """Format a Server-Sent Event message."""
@@ -132,7 +130,6 @@ def _format_sse(event: str, data: dict) -> str:
         raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
     return f"event: {event}\ndata: {json.dumps(data, default=_json_default)}\n\n"
-
 
 async def _stream_metadata_events(
     repo_url: str,
@@ -155,16 +152,16 @@ async def _stream_metadata_events(
 
     def run_extraction_sync() -> None:
         try:
-            jsonld_document, enriched, state = run_extraction(
+            result = run_extraction(
                 repo_url=repo_url,
                 schema_name=schema_name,
                 access_token=access_token,
                 with_enrichment=True,
                 progress_callback=progress_callback,
             )
-            result_holder.append(("ok", jsonld_document, enriched, state))
+            result_holder.append(("ok", result))
         except Exception as e:
-            result_holder.append(("error", str(e), None, None))
+            result_holder.append(("error", str(e)))
 
     loop = asyncio.get_event_loop()
     future = loop.run_in_executor(None, run_extraction_sync)
@@ -182,22 +179,24 @@ async def _stream_metadata_events(
     if not result_holder:
         yield _format_sse("error", {"detail": "Extraction produced no result."})
         return
-    status, first, second, third = result_holder[0]
+
+    status, payload_value = result_holder[0]
     if status == "error":
-        yield _format_sse("error", {"detail": first})
+        yield _format_sse("error", {"detail": payload_value})
         return
-    jsonld_document, enriched, state = first, second, third
+
+    result: ExtractionResult = payload_value
     payload = {
         "status": "success",
         "schema": schema_name,
         "code_url": repo_url,
         "message": "Code analysis completed.",
-        "results": jsonld_document,
-        "enriched_metadata": enriched or {},
-        "errors": state.errors if state and state.errors else None,
+        "results": result.jsonld_document,
+        "enriched_metadata": result.enriched_metadata or {},
+        "errors": result.extraction_state.errors if result.extraction_state and result.extraction_state.errors else None,
+        "fairness": result.fairness_report,
     }
     yield _format_sse("result", payload)
-
 
 @router.get("/metadata/stream")
 async def extract_metadata_stream(
@@ -237,7 +236,6 @@ async def extract_metadata_stream(
             "X-Accel-Buffering": "no",
         },
     )
-
 
 # @router.get("/fairness", response_model=FairnessResponse)
 # async def get_fairness(
@@ -287,7 +285,6 @@ async def extract_metadata_stream(
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-
 @router.get("/metadata/property", response_model=SinglePropertyResponse)
 async def extract_single_property(
     repo_url: HttpUrl = Query(
@@ -315,7 +312,7 @@ async def extract_single_property(
     """
     try:
 
-        jsonld_document, enriched, state = run_extraction(
+        result = run_extraction(
             repo_url=str(repo_url),
             schema_name=schema,
             access_token=access_token,
@@ -323,9 +320,10 @@ async def extract_single_property(
             schema_class=schema_class,
             with_enrichment=True,
         )
-        
+
+        enriched = result.enriched_metadata or {}
         extraction_metadata = enriched.get(property_name)
-        value = jsonld_document.get(property_name)
+        value = result.jsonld_document.get(property_name)
         if extraction_metadata:
             confidence = extraction_metadata.get("confidence")
             source = extraction_metadata.get("source")
@@ -335,7 +333,7 @@ async def extract_single_property(
                 code_url=repo_url,
                 message="Property extraction completed.",
                 property=property_name,
-                errors=state.errors if state and state.errors else None,
+                errors=result.extraction_state.errors if result.extraction_state and result.extraction_state.errors else None,
                 results=[
                     SinglePropertyItem(
                         value=value,
@@ -349,12 +347,10 @@ async def extract_single_property(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "metadata-extractor"}
-
 
 @router.get("/platforms")
 async def get_supported_platforms():
@@ -363,5 +359,6 @@ async def get_supported_platforms():
         "platforms": [
             {"name": "GitHub", "url_pattern": "github.com", "description": "GitHub repositories"},
             {"name": "GitLab", "url_pattern": "gitlab.com", "description": "GitLab repositories"},
+            {"name": "Codeberg", "url_pattern": "codeberg.org", "description": "Codeberg repositories"},
         ]
     }
