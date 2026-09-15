@@ -3,6 +3,7 @@ Layer 4: API / Frameworks – Routes only.
 Schemas in api/schemas; composition in api/services.
 """
 import asyncio
+import dataclasses
 import json
 import queue
 from typing import Optional
@@ -15,7 +16,8 @@ from app.layer_4.schemas.metadata import (
     MetadataEnrichedResponse,
     MetadataPlainResponse,
     SinglePropertyResponse,
-    SinglePropertyItem
+    SinglePropertyItem,
+    FairnessReport
 )
 from app.layer_4.services.metadata_service import (
     run_extraction,
@@ -127,6 +129,8 @@ def _format_sse(event: str, data: dict) -> str:
     def _json_default(o):
         if isinstance(o, HttpUrl):
             return str(o)
+        if isinstance(o, FairnessReport):
+            return dataclasses.asdict(o)
         raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
     return f"event: {event}\ndata: {json.dumps(data, default=_json_default)}\n\n"
