@@ -43,12 +43,17 @@ class OpenAlexClient(CachingHttpClient):
             if not display_name:
                 continue
 
-            name_parts = display_name.rsplit(" ", 1)
-            if len(name_parts) == 2:
-                given_name, family_name = name_parts
+            if "," in display_name:
+                # BibTeX-style "Last, First" format
+                family_name, given_name = display_name.split(",", 1)
+                family_name = family_name.strip()
+                given_name = given_name.strip()
             else:
-                given_name, family_name = display_name, None
-
+                name_parts = display_name.rsplit(" ", 1)
+                if len(name_parts) == 2:
+                    given_name, family_name = name_parts
+                else:
+                    given_name, family_name = display_name, None
             institutions = author_entry.get("institutions", []) or []
             affiliation = None
             if institutions:
