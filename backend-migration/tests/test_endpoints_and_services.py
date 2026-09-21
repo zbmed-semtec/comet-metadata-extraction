@@ -2,6 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, Mock
 import app.layer_4.services.metadata_service as metadata_service
+from app.layer_4.services.metadata_service import ExtractionResult
+from app.layer_2.contracts import ExtractionState
+from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
 
 @pytest.fixture
 def client():
@@ -18,20 +21,20 @@ def test_health_and_platforms(client):
 
 def test_metadata_plain_happy_path(client):
     payload = {"@type": "Software", "name": "X"}
-    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=(payload, None, None)):
+    with patch("app.layer_4.endpoints.metadata.run_extraction", return_value=ExtractionResult(payload, ExtractionState(MetadataCollector()))):
         r = client.get("/api/metadata", params={"repo_url": "https://github.com/a/b", "schema": "connoss", "access_token": "t"})
     assert r.status_code == 200 and r.json()["results"] == payload and r.json()["status"] == "success"
 
 def test_metadata_enriched_returns_enriched_block(client):
     with patch("app.layer_4.endpoints.metadata.run_extraction",
-               return_value=({"@type":"Software"}, {"name": {"source": "API", "confidence": .9, "category": "recommended"}}, None)):
+               return_value=ExtractionResult({"@type":"Software"}, ExtractionState(MetadataCollector()), {"name": {"source": "API", "confidence": .9, "category": "recommended"}})):
         r = client.get("/api/metadata/enriched", params={"repo_url":"https://github.com/a/b"})
     assert r.status_code == 200 and r.json()["enriched_metadata"]["name"]["source"] == "API"
 
 def test_property_endpoint_returns_value_source_confidence_and_propagates_errors(client):
     enriched = {"description": {"source": "API", "confidence": .5, "category": "recommended"}}
     with patch("app.layer_4.endpoints.metadata.run_extraction",
-               return_value=({"description": "Desc"}, enriched, None)):
+               return_value=ExtractionResult({"description": "Desc"}, ExtractionState(MetadataCollector()), enriched)):
         r = client.get("/api/metadata/property", params={"repo_url":"https://github.com/a/b", "property": "description"})
     assert r.status_code == 200 and r.json()["results"][0]["value"] == "Desc" and r.json()["results"][0]["source"] == "API"
     with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=ValueError("nope")):
@@ -44,7 +47,7 @@ def test_stream_endpoint_yields_progress_and_result_events(client):
         cb = kwargs["progress_callback"]
         for step in ("pipeline", "jsonld_build"):
             cb(step, "started"); cb(step, "completed")
-        return {"@type":"Software"}, {"name":{"source":"API","confidence":1,"category":"recommended"}}, None
+        return ExtractionResult({"@type":"Software"}, ExtractionState(MetadataCollector()), {"name":{"source":"API","confidence":1,"category":"recommended"}})
     with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=fake_run):
         r = client.get("/api/metadata/stream", params={"repo_url":"https://github.com/a/b"})
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
@@ -63,8 +66,8 @@ def test_run_extraction_returns_enriched_dict_when_requested():
         from app.layer_3.schemas.linkml.linkml_schema import LinkMlSchema
         sch = Mock(spec=LinkMlSchema); reg.get.return_value = sch
         uc, coll = Mock(), Mock(); uc.execute.return_value.jsonld_document = {"@type":"C"}; mk.return_value = (uc, coll)
-        doc, enr, col = run_extraction("u", "connoss", "t", with_enrichment=True)
-    assert doc == {"@type":"C"} and enr == {"name": {"source": "X", "confidence": 1, "category": "recommended"}}
+        result = run_extraction("u", "connoss", "t", with_enrichment=True)
+    assert result.jsonld_document == {"@type":"C"} and result.enriched_metadata == {"name": {"source": "X", "confidence": 1, "category": "recommended"}}
 
 def test_fairness_service_module_has_current_bug_no_pipeline_composer():
     """Current code references _pipeline_composer which is not assigned -> NameError.
@@ -76,5 +79,5 @@ def test_fairness_service_module_has_current_bug_no_pipeline_composer():
     assert "_pipeline_composer" in str(e.value)
     # evaluator API works in isolation
     from app.layer_3.evaluators.fairness_evaluator import evaluate_fairness
-    assert evaluate_fairness({"license": "MIT", "documentation": "x"}, "CODEMETA").findable >= 0
+    assert evaluate_fairness({"license": "MIT", "documentation": "x"}).findable >= 0
 

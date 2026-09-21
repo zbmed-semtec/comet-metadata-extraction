@@ -4,6 +4,7 @@ Kept separate from routes so the API layer stays modular.
 """
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+from app.layer_3.evaluators.fairness_evaluator import FairnessReport
 
 class MetadataPlainResponse(BaseModel):
     """Response for GET /metadata: canonical maSMP/CODEMETA JSON-LD only."""
@@ -16,7 +17,6 @@ class MetadataPlainResponse(BaseModel):
     errors: Optional[Dict[str, str]] = None
     results: Dict[str, Any]
 
-
 class MetadataEnrichedResponse(BaseModel):
     """Response for GET /metadata/enriched: JSON-LD plus confidence, source, category per property."""
 
@@ -27,19 +27,9 @@ class MetadataEnrichedResponse(BaseModel):
     message: str
     results: Dict[str, Any]
     enriched_metadata: Dict[str, Any]
+    fairness: Optional[FairnessReport] = None
     errors: Optional[Dict[str, str]] = None
-
-
-class FairnessResponse(BaseModel):
-    """Response for GET /fairness: JSON-LD plus FAIRness scores."""
-
-    model_config = ConfigDict(populate_by_name=True)
-    status: str
-    schema_: str = Field(alias="schema", description="Schema used (maSMP or CODEMETA)")
-    code_url: HttpUrl
-    message: str
-    results: Dict[str, Any]
-    fairness: Dict[str, Any]
+    alternatives: Optional[Dict[str, Any]] = None
 
 class SinglePropertyItem(BaseModel):
     """Single property value plus enrichment for a specific profile."""

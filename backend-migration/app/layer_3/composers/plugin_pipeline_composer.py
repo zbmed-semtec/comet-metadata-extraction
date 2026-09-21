@@ -38,6 +38,6 @@ class PluginPipelineComposer(PipelineComposer):
                 logger.exception("failed to select plugins for property '%s'", key)
         pipeline_steps = []
         for priority_level in sorted(priority_groups.keys(), reverse=True):
-            pipeline_steps.extend(priority_groups[priority_level])
+            pipeline_steps.extend(sorted(priority_groups[priority_level], key=lambda p: p.name))
 
         return ExtractionPipeline(steps=pipeline_steps)

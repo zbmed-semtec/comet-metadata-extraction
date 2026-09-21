@@ -22,7 +22,7 @@ def _print_json(data: Any) -> None:
 
 def _extract_command(args: argparse.Namespace) -> None:
     initialize()
-    jsonld_document, enriched, state = run_extraction(
+    result = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
@@ -30,17 +30,17 @@ def _extract_command(args: argparse.Namespace) -> None:
         schema_class=args.schema_class,
     )
 
-    if state.errors:
-        logger.warning("Extraction completed with errors: %s", state.errors)
+    if result.extraction_state.errors:
+        logger.warning("Extraction completed with errors: %s", result.extraction_state.errors)
         print("Extraction completed with errors:", file=sys.stderr)
-        for step_name, error in state.errors.items():
+        for step_name, error in result.extraction_state.errors.items():
             print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     result = {
         "schema": args.schema,
         "code_url": args.url,
-        "results": jsonld_document,
-        "enriched_metadata": enriched or {},
+        "results": result.jsonld_document,
+        "enriched_metadata": result.enriched_metadata or {},
     }
     _print_json(result)
 
@@ -94,7 +94,7 @@ def _collect_property_results(
 
 def _extract_property_command(args: argparse.Namespace) -> None:
     initialize()
-    jsonld_document, enriched, state = run_extraction(
+    result = run_extraction(
         repo_url=args.url,
         schema_name=args.schema,
         access_token=args.token,
@@ -106,8 +106,8 @@ def _extract_property_command(args: argparse.Namespace) -> None:
     result = _collect_property_results(
         schema=args.schema,
         code_url=args.url,
-        jsonld_document=jsonld_document,
-        enriched_metadata=enriched or {},
+        jsonld_document=result.jsonld_document,
+        enriched_metadata=result.enriched_metadata or {},
         property_name=args.property,
     )
 
@@ -120,10 +120,10 @@ def _extract_property_command(args: argparse.Namespace) -> None:
         print(message, file=sys.stderr)
         sys.exit(1)
 
-    if state.errors:
-        logger.warning("Extraction completed with errors: %s", state.errors)
+    if result.extraction_state.errors:
+        logger.warning("Extraction completed with errors: %s", result.extraction_state.errors)
         print("Extraction completed with errors:", file=sys.stderr)
-        for step_name, error in state.errors.items():
+        for step_name, error in result.extraction_state.errors.items():
             print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
     # Single flat dict: property_name, property_value, source(s), confidence
@@ -142,18 +142,21 @@ def _fairness_command(args: argparse.Namespace) -> None:
     """
     Compute a FAIRness report for a repository and print JSON.
     """
-    jsonld_document, fairness_report = run_fairness_assessment(
+    initialize()
+    result = run_extraction(
         repo_url=args.url,
-        schema=args.schema,
+        schema_name="ConnOSS",
         access_token=args.token,
         with_enrichment=False,
+        schema_class="Software",
+        fairness_assessment=True,
     )
 
     result = {
-        "schema": args.schema,
+        "schema": "ConnOSS",
         "code_url": args.url,
-        "results": jsonld_document,
-        "fairness": asdict(fairness_report),
+        "results": result.jsonld_document,
+        "fairness": asdict(result.fairness_report),
     }
     _print_json(result)
 
@@ -226,20 +229,16 @@ def main() -> None:
     extract_prop_parser.set_defaults(func=_extract_property_command)
 
     # comet-rs fairness {GIT_URL} {SCHEMA}
-    # fairness_parser = subparsers.add_parser(
-    #     "fairness",
-    #     help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
-    # )
-    # fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
-    # fairness_parser.add_argument(
-    #     "schema",
-    #     help="Schema to analyze against (e.g. connoss, CODEMETA).",
-    # )
-    # fairness_parser.add_argument(
-    #     "--token",
-    #     help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
-    # )
-    # fairness_parser.set_defaults(func=_fairness_command)
+    fairness_parser = subparsers.add_parser(
+        "fairness",
+        help="Compute a FAIRness report (F/A/I/R scores) for a repository.",
+    )
+    fairness_parser.add_argument("url", help="Repository URL (GitHub, GitLab).")
+    fairness_parser.add_argument(
+        "--token",
+        help="GitHub/GitLab token (or set GITHUB_TOKEN / GITLAB_TOKEN). Raises rate limits when unset.",
+    )
+    fairness_parser.set_defaults(func=_fairness_command)
 
     args = parser.parse_args()
 
