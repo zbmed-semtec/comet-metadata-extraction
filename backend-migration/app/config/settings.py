@@ -35,20 +35,20 @@ class Settings(BaseSettings):
     # LLM settings
     llm_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("README_LLM_ENABLED", "LLM_EXTRACTION_ENABLED", "llm_enabled"),
+        validation_alias=AliasChoices("COMET_LLM_ENABLED", "LLM_EXTRACTION_ENABLED", "llm_enabled"),
     )
     llm_provider: str = Field(
         default="ollama",
-        validation_alias=AliasChoices("README_LLM_PROVIDER", "LLM_EXTRACTION_PROVIDER", "llm_provider"),
+        validation_alias=AliasChoices("COMET_LLM_PROVIDER", "LLM_EXTRACTION_PROVIDER", "llm_provider"),
     )
     llm_model: str = Field(
         default="qwen2.5:7b",
-        validation_alias=AliasChoices("README_LLM_MODEL", "LLM_EXTRACTION_MODEL", "llm_model"),
+        validation_alias=AliasChoices("COMET_LLM_MODEL", "LLM_EXTRACTION_MODEL", "llm_model"),
     )
     llm_base_url: str = Field(
         default="http://localhost:11435",
         validation_alias=AliasChoices(
-            "README_LLM_BASE_URL",
+            "COMET_LLM_BASE_URL",
             "LLM_EXTRACTION_BASE_URL",
             "OLLAMA_HOST",
             "llm_base_url",

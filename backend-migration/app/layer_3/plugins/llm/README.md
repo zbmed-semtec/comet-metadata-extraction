@@ -7,13 +7,13 @@ Optional LLM-assisted README extraction on top of the deterministic metadata pip
 In `backend-migration/.env`:
 
 ```env
-README_LLM_ENABLED=true
-README_LLM_PROVIDER=ollama
-README_LLM_MODEL=qwen2.5:7b
-README_LLM_BASE_URL=http://127.0.0.1:11435
+COMET_LLM_ENABLED=true
+COMET_LLM_PROVIDER=ollama
+COMET_LLM_MODEL=qwen2.5:7b
+COMET_LLM_BASE_URL=http://127.0.0.1:11435
 ```
 
-- When `README_LLM_ENABLED=false`, LLM extractors no-op.
+- When `COMET_LLM_ENABLED=false`, LLM extractors no-op.
 - When enabled with `provider=ollama`, bootstrap starts Ollama, pulls the model if needed, and warms it up.
 - For `vllm`, start the service yourself before extraction.
 
