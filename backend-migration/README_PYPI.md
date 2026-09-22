@@ -1,177 +1,173 @@
-# comet-rs
+# CoMET-RS — Code Metadata Extraction Toolkit for Research Software
 
-CLI and Python library for extracting **maSMP** / **CODEMETA** metadata (plus per‑property sources and confidence) from GitHub and GitLab repositories.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18837374.svg)](https://doi.org/10.5281/zenodo.18837374)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Given a repository URL, `comet-rs`:
+**CoMET-RS** extracts **FAIR** (Findable, Accessible, Interoperable, Reusable), **machine-actionable** metadata from GitHub, GitLab, and Codeberg repositories, and outputs it as JSON-LD conforming to a schema of your choice (`ConnOSS`, `maSMP`, or `CODEMETA`).
 
-- Calls the platform API (GitHub / GitLab)
-- Parses files like `CITATION.cff`, `LICENSE`, and `README.md`
-- Optionally enriches with external services (OpenAlex, archives)
-- Builds a maSMP or CODEMETA JSON‑LD document
-- Tracks, for each property, **which source set it** and with what **confidence**
+It ships as both a **command-line tool** (`comet-rs`) and a **Python library** (`comet_rs`).
 
----
+- **Source code & full documentation:** https://github.com/zbmed-semtec/comet-metadata-extraction
+- **Issue tracker:** https://github.com/zbmed-semtec/comet-metadata-extraction/issues
+- **License:** GPL-3.0
 
 ## Installation
+
+Requires Python 3.10 or higher.
 
 ```bash
 pip install comet-rs
 ```
 
-Python 3.10+ is required.
-
----
-
 ## CLI usage
+
+After installation, the `comet-rs` command is available on your `PATH`.
+
+```bash
+comet-rs --help
+```
+
+```
+usage: comet-rs [-h] {extract,extract_property,fairness} ...
+
+Extract metadata (and per-property sources) from code repositories, for any
+supported schema.
+```
 
 ### Extract full metadata
 
 ```bash
-comet-rs extract https://github.com/zbmed-semtec/maSMP-metadata-extraction maSMP --with-enrichment
+comet-rs extract <url> <schema> [--schema-class SCHEMA_CLASS] [--token TOKEN] [--with-enrichment]
 ```
 
-Outputs JSON with:
+- `url` — Repository URL (GitHub, GitLab, or Codeberg).
+- `schema` — Schema to use: `connoss`, `maSMP`, or `CODEMETA` (case-insensitive).
+- `--schema-class` — Schema class to use (default: `software`).
+- `--token` — Personal access token for the platform. If omitted, CoMET-RS looks for `GITHUB_TOKEN`, `GITLAB_TOKEN`, or `CODEBERG_TOKEN` in the environment, based on the repository URL. A token increases API rate limits and allows access to private repositories.
+- `--with-enrichment` — Include per-property enrichment metadata (source, confidence, category) alongside the extracted JSON-LD.
 
-- `schema`: `maSMP` or `CODEMETA`
-- `code_url`: repository URL
-- `results`: JSON‑LD document
-- `enriched_metadata`: per‑property source / confidence / category (for maSMP)
-
-### Extract a single property (value + source)
+Example:
 
 ```bash
-comet-rs extract_property https://github.com/zbmed-semtec/maSMP-metadata-extraction author
+comet-rs extract https://github.com/zbmed-semtec/comet-metadata-extraction connoss --with-enrichment
 ```
 
-Example output:
+Output (written to stdout as JSON):
 
 ```json
 {
-  "property_name": "author",
-  "property_value": [
-    {
-      "@type": "Person",
-      "familyName": "",
-      "givenName": "Daniel",
-      "@id": "https://orcid.org/0000-0003-0454-7145"
-    }
-  ],
-  "source": "citation_cff",
-  "confidence": 0.93
+  "schema": "connoss",
+  "code_url": "https://github.com/zbmed-semtec/comet-metadata-extraction",
+  "results": { "...": "JSON-LD metadata document..." },
+  "enriched_metadata": { "...": "per-property source/confidence/category..." }
 }
 ```
 
-By default, `extract_property` uses the **maSMP** schema. To use CODEMETA:
+### Extract a single property
 
 ```bash
-comet-rs extract_property https://github.com/owner/repo name --schema CODEMETA
+comet-rs extract_property <url> <property> [--schema SCHEMA] [--schema-class SCHEMA_CLASS] [--token TOKEN]
 ```
 
-### Compute a FAIRness assessment
+- `url` — Repository URL.
+- `property` — Property name, e.g. `name`, `identifier`, `codemeta:referencePublication`, or `codemeta_referencePublication`.
+- `--schema` — Schema to use (default: `connoss`).
+- `--schema-class` — Schema class to use (default: `software`).
+- `--token` — See above.
+
+Example:
 
 ```bash
-comet-rs fairness https://github.com/zbmed-semtec/maSMP-metadata-extraction maSMP
+comet-rs extract_property https://github.com/zbmed-semtec/comet-metadata-extraction license
 ```
 
-Outputs JSON with:
+Output:
 
-- `schema`: `maSMP` or `CODEMETA`
-- `code_url`: repository URL
-- `results`: JSON‑LD document used for the assessment
-- `fairness`: full FAIRness report (overall score, per‑principle scores, and indicator details)
+```json
+{
+  "property_name": "license",
+  "property_value": ["GPL-3.0"],
+  "source": "github_api",
+  "confidence": 0.95
+}
+```
 
----
-
-## Authentication & rate limits
-
-For public repositories you can often run without a token, but GitHub and GitLab apply rate limits. For heavier use or private repos, set:
+### FAIRness assessment
 
 ```bash
-export GITHUB_TOKEN=ghp_...      # for github.com URLs
-export GITLAB_TOKEN=glpat_...    # for gitlab.com URLs
+comet-rs fairness <url> [--token TOKEN]
 ```
 
-`comet-rs` automatically picks the right token based on the repository URL, or you can pass `--token` explicitly:
+Runs a FAIRness assessment of the repository against the `ConnOSS` schema.
+
+Example:
 
 ```bash
-comet-rs extract https://gitlab.com/owner/repo maSMP --token glpat_...
+comet-rs fairness https://github.com/zbmed-semtec/comet-metadata-extraction
 ```
 
-Tokens only need minimal read scopes (`repo` / `read:org` on GitHub, `read_api` / `read_repository` on GitLab).
+> **Note:** the FAIRness assessment feature is under active revision upstream and may change or be temporarily limited in future releases.
 
----
+## Authentication
+
+CoMET-RS works without authentication, but unauthenticated requests are subject to strict API rate limits on GitHub/GitLab/Codeberg, and cannot access private repositories. Provide a token via `--token`, or set one of the following environment variables (selected automatically based on the repository URL):
+
+```bash
+export GITHUB_TOKEN=your_github_token
+export GITLAB_TOKEN=your_gitlab_token
+export CODEBERG_TOKEN=your_codeberg_token
+```
 
 ## Python API
 
-You can also call the extractor directly from Python using the `comet_rs` package.
-
-### Full extraction
-
-```python
-import os
-
-import comet_rs
-
-jsonld_document, enriched = comet_rs.extract_metadata(
-    "https://github.com/zbmed-semtec/maSMP-metadata-extraction",
-    schema="maSMP",                              # or "CODEMETA"
-    token=os.getenv("GITHUB_TOKEN"),            # or GITLAB_TOKEN for GitLab
-    with_enrichment=True,                       # False for JSON‑LD only
-)
-
-# jsonld_document: maSMP/CODEMETA JSON‑LD (dict)
-# enriched: per‑property source/confidence/category (or None)
-```
-
-### Extract a single property in Python
+CoMET-RS can also be used as a library:
 
 ```python
 import comet_rs
 
-extracted_at, matches = comet_rs.extract_property(
-    "https://github.com/zbmed-semtec/maSMP-metadata-extraction",
-    "author",                     # JSON-LD key or entity field name
-    schema="maSMP",               # or "CODEMETA"
-    token=os.getenv("GITHUB_TOKEN"),
+# Full extraction
+result = comet_rs.extract_metadata(
+    repo_url="https://github.com/zbmed-semtec/comet-metadata-extraction",
+    schema_name="connoss",       # or "maSMP" / "CODEMETA"
+    schema_class="Software",
+    token=None,                  # or rely on GITHUB_TOKEN / GITLAB_TOKEN / CODEBERG_TOKEN
+    with_enrichment=True,
 )
 
-for match in matches:
-    print("Profile:", match["profile"])
-    print("Value:", match["value"])
-    print("Source:", match.get("source"))
-    print("Confidence:", match.get("confidence"))
-```
-
-### FAIRness assessment in Python
-
-```python
-import os
-
-import comet_rs
-
-jsonld_document, fairness_report = comet_rs.assess_fairness(
-    "https://github.com/zbmed-semtec/maSMP-metadata-extraction",
-    schema="maSMP",               # or "CODEMETA"
-    token=os.getenv("GITHUB_TOKEN"),
+# Single property
+result = comet_rs.extract_property(
+    repo_url="https://github.com/zbmed-semtec/comet-metadata-extraction",
+    property_name="author",
+    schema_name="connoss",
 )
-
-print("Overall score:", fairness_report.overall_score)
-print("Findable score:", fairness_report.findable.score)
-print("Accessible score:", fairness_report.accessible.score)
-print("Interoperable score:", fairness_report.interoperable.score)
-print("Reusable score:", fairness_report.reusable.score)
+for prop,findings in result.extraction_state.metadata_collector.data.items():
+  print(prop)
+  for finding in findings:
+    print(" -", finding.source, finding.property_value)
 ```
 
----
+## Supported schemas
 
-## Project links & docs
+- **ConnOSS**
+- **maSMP**
+- **CODEMETA**
 
-Backend documentation lives under `backend-migration/docs/` and is published with MkDocs:
+## Supported platforms
 
-```bash
-cd backend-migration
-mkdocs serve
-```
+- GitHub
+- GitLab
+- Codeberg
 
-Open http://127.0.0.1:8002/ for architecture, layer guides, and API usage. See `backend-migration/README.md` to run the FastAPI server locally.
+## Other ways to run CoMET
 
+CoMET-RS is also available as a web API (via Docker or manual installation) and previously shipped a web frontend (now discontinued/in migration). See the full project documentation on GitHub for Docker Compose instructions, the FastAPI/Swagger backend, and architecture details:
+https://github.com/zbmed-semtec/comet-metadata-extraction
+
+## Citation
+
+If you use CoMET-RS in your research, please cite it using the metadata in `CITATION.cff` on the GitHub repository:
+https://github.com/zbmed-semtec/comet-metadata-extraction/blob/main/CITATION.cff
+
+## License
+
+CoMET-RS is licensed under the GNU General Public License v3.0 (GPL-3.0). See the [LICENSE](https://github.com/zbmed-semtec/comet-metadata-extraction/blob/main/LICENSE) file for details.
