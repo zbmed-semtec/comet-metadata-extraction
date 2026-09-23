@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comet-rs"
-version = "0.4.0"
+version = "0.4.2"
 description = "CLI and library for extracting metadata (and sources) from code repositories"
 readme = "README_PYPI.md"
 requires-python = ">=3.10"
@@ -38,7 +38,10 @@ comet-rs = "app.cli:main"
 [tool.setuptools]
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*", "comet_rs*"]
+include = ["app*", "comet_rs*", "schemas*"]
+
+[tool.setuptools.package-data]
+schemas = ["*.yaml"]
 
 [tool.black]
 line-length = 100
