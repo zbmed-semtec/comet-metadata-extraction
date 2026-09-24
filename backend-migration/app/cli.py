@@ -4,12 +4,13 @@ import logging
 import os
 import sys
 from dataclasses import asdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi.encoders import jsonable_encoder
 
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
+from app.layer_2.errors import UnknownPropertyError
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +45,28 @@ def _extract_command(args: argparse.Namespace) -> None:
     }
     _print_json(result)
 
-def _normalize_property_key(property_name: str) -> Tuple[str, str]:
+def _property_key_candidates(property_name: str) -> List[str]:
     """
-    Return a tuple of (jsonld_style, entity_style) keys for flexible matching.
+    Return candidate keys to look up in the JSON-LD document / enrichment map.
 
-    Example:
-        "codemeta:readme" -> ("codemeta:readme", "codemeta_readme")
-        "codemeta_readme" -> ("codemeta:readme", "codemeta_readme")
-        "name"            -> ("name", "name")
+    JSON-LD keys are plain schema property (slot) names, so a prefixed
+    "codemeta:readme" or underscored "codemeta_readme" is normalized to
+    "readme" first, with the raw input kept as fallback.
     """
-    if ":" in property_name:
-        jsonld_key = property_name
-        entity_key = property_name.replace(":", "_")
-    else:
-        entity_key = property_name
-        jsonld_key = property_name.replace("_", ":")
-    return jsonld_key, entity_key
+    stripped = property_name.split(":")[-1]
+    candidates = [stripped]
+    for variant in (property_name, property_name.replace(":", "_")):
+        if variant not in candidates:
+            candidates.append(variant)
+    return candidates
+
+
+def _resolve_key(candidates: List[str], mapping: Dict[str, Any]) -> Optional[str]:
+    for key in candidates:
+        if key in mapping:
+            return key
+    return None
+
 
 def _collect_property_results(
     schema: str,
@@ -68,17 +75,21 @@ def _collect_property_results(
     enriched_metadata: Dict[str, Any],
     property_name: str,
 ) -> Dict[str, Any]:
-    jsonld_key, _ = _normalize_property_key(property_name)
+    candidates = _property_key_candidates(property_name)
+    jsonld_key = _resolve_key(candidates, jsonld_document)
 
     matches: List[Dict[str, Any]] = []
-    value = jsonld_document.get(jsonld_key)
-    if value is not None:
-        meta = enriched_metadata.get(jsonld_key, {}) if isinstance(enriched_metadata, dict) else {}
+    if jsonld_key is not None:
+        meta = {}
+        if isinstance(enriched_metadata, dict):
+            enriched_key = _resolve_key(candidates, enriched_metadata)
+            if enriched_key is not None:
+                meta = enriched_metadata[enriched_key]
         matches.append(
             {
                 "profile": jsonld_document.get("@type", schema),
                 "property": jsonld_key,
-                "value": value,
+                "value": jsonld_document[jsonld_key],
                 "source": meta.get("source"),
                 "confidence": meta.get("confidence"),
                 "category": meta.get("category"),
@@ -88,22 +99,31 @@ def _collect_property_results(
     return {
         "schema": schema,
         "code_url": code_url,
-        "property": jsonld_key,
+        "property": property_name,
         "matches": matches,
     }
 
+
 def _extract_property_command(args: argparse.Namespace) -> None:
     initialize()
-    result = run_extraction(
-        repo_url=args.url,
-        schema_name=args.schema,
-        access_token=args.token,
-        with_enrichment=True,
-        schema_class=args.schema_class,
-        single_property=args.property,
-    )
+    try:
+        result = run_extraction(
+            repo_url=args.url,
+            schema_name=args.schema,
+            access_token=args.token,
+            with_enrichment=True,
+            schema_class=args.schema_class,
+            single_property=args.property,
+            fairness_assessment=False,
+        )
+    except UnknownPropertyError as e:
+        logger.warning("Unknown property: %s", e)
+        print(f"Unknown property '{args.property}' in schema '{args.schema}': {e}", file=sys.stderr)
+        sys.exit(2)
 
-    result = _collect_property_results(
+    extraction_errors = result.extraction_state.errors if result.extraction_state else None
+
+    summary = _collect_property_results(
         schema=args.schema,
         code_url=args.url,
         jsonld_document=result.jsonld_document,
@@ -111,32 +131,33 @@ def _extract_property_command(args: argparse.Namespace) -> None:
         property_name=args.property,
     )
 
-    if not result["matches"]:
+    if not summary["matches"]:
         message = (
             f"No matches found for property '{args.property}' "
             f"in schema '{args.schema}' for URL '{args.url}'."
         )
+        if extraction_errors:
+            message += " Extraction errors: " + "; ".join(
+                f"{step}: {error}" for step, error in extraction_errors.items()
+            )
         logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)
 
-    if result.extraction_state.errors:
-        logger.warning("Extraction completed with errors: %s", result.extraction_state.errors)
+    if extraction_errors:
+        logger.warning("Extraction completed with errors: %s", extraction_errors)
         print("Extraction completed with errors:", file=sys.stderr)
-        for step_name, error in result.extraction_state.errors.items():
+        for step_name, error in extraction_errors.items():
             print(f"  Step '{step_name}': {error}", file=sys.stderr)
 
-    # Single flat dict: property_name, property_value, source(s), confidence
-    first = result["matches"][0]
-    source = first.get("source")
-    # Keep list when multiple sources contributed; single value when one
-    output = {
-        "property_name": first["property"],
-        "property_value": first["value"],
-        "source": source,
-        "confidence": first.get("confidence"),
-    }
-    _print_json(output)
+    for match in summary["matches"]:
+        output = {
+            "property_name": match["property"],
+            "property_value": match["value"],
+            "source": match.get("source"),
+            "confidence": match.get("confidence"),
+        }
+        _print_json(output)
 
 def _fairness_command(args: argparse.Namespace) -> None:
     """
@@ -248,7 +269,7 @@ def main() -> None:
         if "gitlab" in repo_url:
             args.token = os.environ.get("GITLAB_TOKEN")
         elif "github" in repo_url:
-            args.token = os.environ.get("GITHUB_TOKEN") 
+            args.token = os.environ.get("GITHUB_TOKEN")
         elif 'codeberg' in repo_url:
             args.token = os.environ.get("CODEBERG_TOKEN")
 

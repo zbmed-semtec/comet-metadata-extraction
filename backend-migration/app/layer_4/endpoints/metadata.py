@@ -24,6 +24,7 @@ from app.layer_4.services.metadata_service import (
     ExtractionResult,
 )
 from app.layer_2.use_cases.extract_metadata import EXTRACTION_STEPS
+from app.layer_2.errors import UnknownPropertyError
 
 # Step ID -> human-readable label for SSE progress events
 STEP_LABELS = {step_id: label for step_id, label in EXTRACTION_STEPS}
@@ -323,29 +324,41 @@ async def extract_single_property(
             single_property=property_name,
             schema_class=schema_class,
             with_enrichment=True,
+            fairness_assessment=False,
         )
 
+        from app.cli import _property_key_candidates, _resolve_key
+        candidates = _property_key_candidates(property_name)
         enriched = result.enriched_metadata or {}
-        extraction_metadata = enriched.get(property_name)
-        value = result.jsonld_document.get(property_name)
-        if extraction_metadata:
-            confidence = extraction_metadata.get("confidence")
-            source = extraction_metadata.get("source")
-            return SinglePropertyResponse(
-                status="success",
-                schema_=schema_class,
-                code_url=repo_url,
-                message="Property extraction completed.",
-                property=property_name,
-                errors=result.extraction_state.errors if result.extraction_state and result.extraction_state.errors else None,
-                results=[
-                    SinglePropertyItem(
-                        value=value,
-                        confidence=confidence,
-                        source=source
-                    )
-                ],
+        jsonld_key = _resolve_key(candidates, result.jsonld_document)
+        enriched_key = _resolve_key(candidates, enriched)
+        extraction_metadata = enriched.get(enriched_key) if enriched_key else None
+        value = result.jsonld_document.get(jsonld_key) if jsonld_key else None
+        if jsonld_key is None and extraction_metadata is None:
+            raise ValueError(
+                f"Property '{property_name}' not found in schema '{schema}'."
             )
+        extraction_errors = (
+            {step: str(error) for step, error in result.extraction_state.errors.items()}
+            if result.extraction_state and result.extraction_state.errors else None
+        )
+        return SinglePropertyResponse(
+            status="success",
+            schema_=schema_class,
+            code_url=repo_url,
+            message="Property extraction completed.",
+            property=property_name,
+            errors=extraction_errors,
+            results=[
+                SinglePropertyItem(
+                    value=value,
+                    confidence=extraction_metadata.get("confidence") if extraction_metadata else None,
+                    source=extraction_metadata.get("source") if extraction_metadata else None
+                )
+            ],
+        )
+    except UnknownPropertyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
