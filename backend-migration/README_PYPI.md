@@ -135,15 +135,15 @@ result = comet_rs.extract_metadata(
 )
 
 # Single property
-result = comet_rs.extract_property(
+extracted_at, matches = comet_rs.extract_property(
     repo_url="https://github.com/zbmed-semtec/comet-metadata-extraction",
     property_name="author",
-    schema_name="connoss",
+    schema_name="connoss",       # or "maSMP" / "CODEMETA"
+    schema_class="Software",
+    token=None,                  # or rely on GITHUB_TOKEN / GITLAB_TOKEN / CODEBERG_TOKEN
 )
-for prop,findings in result.extraction_state.metadata_collector.data.items():
-  print(prop)
-  for finding in findings:
-    print(" -", finding.source, finding.property_value)
+for match in matches:
+    print(extracted_at, match["profile"], match["value"], match["source"], match["confidence"])
 ```
 
 ## Supported schemas
