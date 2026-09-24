@@ -323,11 +323,20 @@ async def extract_single_property(
             single_property=property_name,
             schema_class=schema_class,
             with_enrichment=True,
+            fairness_assessment=False,
         )
 
+        from app.cli import _property_key_candidates, _resolve_key
+        candidates = _property_key_candidates(property_name)
         enriched = result.enriched_metadata or {}
-        extraction_metadata = enriched.get(property_name)
-        value = result.jsonld_document.get(property_name)
+        jsonld_key = _resolve_key(candidates, result.jsonld_document)
+        enriched_key = _resolve_key(candidates, enriched)
+        extraction_metadata = enriched.get(enriched_key) if enriched_key else None
+        value = result.jsonld_document.get(jsonld_key) if jsonld_key else None
+        if value is None and extraction_metadata is None:
+            raise ValueError(
+                f"Property '{property_name}' not found in schema '{schema}'."
+            )
         if extraction_metadata:
             confidence = extraction_metadata.get("confidence")
             source = extraction_metadata.get("source")

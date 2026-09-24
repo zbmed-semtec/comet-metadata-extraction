@@ -36,6 +36,13 @@ class PluginPipelineComposer(PipelineComposer):
                         priority_groups[plugin.priority_level] = group
             except Exception as e:
                 logger.exception("failed to select plugins for property '%s'", key)
+
+        if single_property and not priority_groups:
+            raise ValueError(
+                f"Unknown or unextractable property '{single_property}' for schema "
+                f"'{context.schema.get_schema_name()}:{context.schema.get_class_name()}'"
+            )
+
         pipeline_steps = []
         for priority_level in sorted(priority_groups.keys(), reverse=True):
             pipeline_steps.extend(sorted(priority_groups[priority_level], key=lambda p: p.name))
