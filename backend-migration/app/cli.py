@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
+from app.layer_2.errors import UnknownPropertyError
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ def _property_key_candidates(property_name: str) -> List[str]:
 
 def _resolve_key(candidates: List[str], mapping: Dict[str, Any]) -> Optional[str]:
     for key in candidates:
-        if key in mapping and mapping[key] is not None:
+        if key in mapping:
             return key
     return None
 
@@ -115,7 +116,7 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             single_property=args.property,
             fairness_assessment=False,
         )
-    except ValueError as e:
+    except UnknownPropertyError as e:
         logger.warning("Unknown property: %s", e)
         print(f"Unknown property '{args.property}' in schema '{args.schema}': {e}", file=sys.stderr)
         sys.exit(2)
@@ -135,6 +136,10 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             f"No matches found for property '{args.property}' "
             f"in schema '{args.schema}' for URL '{args.url}'."
         )
+        if extraction_errors:
+            message += " Extraction errors: " + "; ".join(
+                f"{step}: {error}" for step, error in extraction_errors.items()
+            )
         logger.warning(message)
         print(message, file=sys.stderr)
         sys.exit(1)

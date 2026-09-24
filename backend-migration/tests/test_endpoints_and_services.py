@@ -40,6 +40,23 @@ def test_property_endpoint_returns_value_source_confidence_and_propagates_errors
     with patch("app.layer_4.endpoints.metadata.run_extraction", side_effect=ValueError("nope")):
         assert client.get("/api/metadata/property", params={"repo_url":"https://github.com/a/b", "property": "x"}).status_code == 400
 
+def test_property_endpoint_null_value_with_errors_returns_200_not_found_style(client):
+    state = ExtractionState(MetadataCollector())
+    state.errors["fetch_repository"] = Exception("403 rate limit exceeded")
+    with patch("app.layer_4.endpoints.metadata.run_extraction",
+               return_value=ExtractionResult({"description": None}, state, {})):
+        r = client.get("/api/metadata/property", params={"repo_url":"https://github.com/a/b", "property": "description"})
+    body = r.json()
+    assert r.status_code == 200
+    assert body["results"][0]["value"] is None
+    assert "rate limit exceeded" in body["errors"]["fetch_repository"]
+
+def test_property_endpoint_absent_property_returns_400(client):
+    with patch("app.layer_4.endpoints.metadata.run_extraction",
+               return_value=ExtractionResult({"@type": "Software"}, ExtractionState(MetadataCollector()), {})):
+        r = client.get("/api/metadata/property", params={"repo_url":"https://github.com/a/b", "property": "bogus"})
+    assert r.status_code == 400 and "not found" in r.json()["detail"]
+
 def test_stream_endpoint_yields_progress_and_result_events(client):
     events = []
     def progress_cb(step, status): events.append((step, status))

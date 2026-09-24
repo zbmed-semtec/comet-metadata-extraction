@@ -59,6 +59,39 @@ def test_compose_only_runs_for_applicable_platform_and_priority_order():
     pipe = ppc.compose(ctx)
     assert [s.name for s in pipe.steps] == ["p"]
 
+def test_select_raises_unknown_property_error_for_unknown_uri():
+    from app.layer_2.extraction_plugin_manager import ExtractionPluginManager
+    from app.layer_2.errors import UnknownPropertyError
+    from app.layer_2.contracts import ExtractionContext
+    from app.layer_3.composers.plugin_pipeline_composer import PluginPipelineComposer
+    mgr = ExtractionPluginManager()
+    ppc = PluginPipelineComposer(); ppc.plugin_manager = mgr
+    ctx = ExtractionContext("u", "d", _StubSchema(["name"]), "github.com")
+    with pytest.raises(UnknownPropertyError):
+        ppc.compose(ctx, single_property="name")
+
+def test_compose_single_property_reraises_select_runtime_errors():
+    from unittest.mock import patch
+    from app.layer_2.errors import UnknownPropertyError
+    from app.layer_2.contracts import ExtractionContext
+    from app.layer_3.composers.plugin_pipeline_composer import PluginPipelineComposer
+    ppc = PluginPipelineComposer()
+    ppc.plugin_manager = Mock()
+    ppc.plugin_manager.select = Mock(side_effect=RuntimeError("403 rate limit"))
+    ctx = ExtractionContext("u", "d", _StubSchema(["name"]), "github.com")
+    with pytest.raises(RuntimeError, match="rate limit"):
+        ppc.compose(ctx, single_property="name")
+
+def test_compose_full_run_swallows_select_runtime_errors():
+    from app.layer_2.contracts import ExtractionContext
+    from app.layer_3.composers.plugin_pipeline_composer import PluginPipelineComposer
+    ppc = PluginPipelineComposer()
+    ppc.plugin_manager = Mock()
+    ppc.plugin_manager.select = Mock(side_effect=RuntimeError("boom"))
+    ctx = ExtractionContext("u", "d", _StubSchema(["name", "description"]), "github.com")
+    pipe = ppc.compose(ctx)
+    assert list(pipe.steps) == []
+
 def test_get_returns_none_for_unknown_plugin():
     from app.layer_2.plugin_manager import PluginManager
     assert PluginManager().get("nope") is None
