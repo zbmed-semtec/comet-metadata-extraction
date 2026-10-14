@@ -34,19 +34,25 @@ Here you find instructions for performing the different types of installations p
 
 ## Docker
 
-The Docker installation will start the backend API (port `8000`) and the frontend (port `3000`).
+The Docker installation will start the backend API (port `8000`)
 
 ```bash
 git clone git@github.com:zbmed-semtec/comet-metadata-extraction.git
 cd comet-metadata-extraction/
+
+# Recommended: backend only
 docker compose up --build
+
+# Legacy migration frontend included
+# docker compose --profile frontend up --build
+
 ```
 
 Once the containers are running, these URLs are being used.
 
-- **Legacy Frontend UI:** [http://localhost:3000](http://localhost:3000)
 - **Backend API:** [http://localhost:8000](http://localhost:8000)
 - **API docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+- *Legacy Frontend UI:* [http://localhost:3000](http://localhost:3000)
 
 To stop the running containers, run:
 

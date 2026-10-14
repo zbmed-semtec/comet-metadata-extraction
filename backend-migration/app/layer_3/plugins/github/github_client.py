@@ -205,9 +205,9 @@ class GitHubClient(GitPlatformClient):
         return self.get_repository().get('created_at')
 
     def get_date_published(self):
-        for release in self.get_releases():
+        for release in self.get_releases()[::-1]:
             return release.get('published_at')
-        for tag_descriptor in self.get_tags():
+        for tag_descriptor in self.get_tags()[::-1]:
             url = tag_descriptor.get('commit', {}).get('url')
             try:
                 tag = self._caching_get_json(url)

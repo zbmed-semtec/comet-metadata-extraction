@@ -176,9 +176,9 @@ class CodebergClient(GitPlatformClient):
         return self.get_repository().get('created_at')
 
     def get_date_published(self):
-        for release in self.get_releases():
+        for release in self.get_releases()[::-1]:
             return release.get('published_at')
-        for tag in self.get_tags():
+        for tag in self.get_tags()[::-1]:
             return tag.get('commit', {}).get('created')
 
     def list_directory(self, path: str = "") -> list[RepositoryItem]:
