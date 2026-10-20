@@ -12,7 +12,7 @@ retrieval:
     alternateNames: [ "alternate name", "alternative name", "aka", "also known as", "alias", "aliases", "renamed", "short name", "abbreviation", "acronym", "nickname", "code name"]
     buildInstructions: ["build", "building", "compile", "compilation", "source", "from source", "make", "cmake", "bazel", "wheel", "build from source", "build instructions", "development setup", "dev setup", "docker build", "dockerfile", "pip", "setup"]
     applicationCategory: ["category", "type", "domain", "application type", "software type", "tag", "tags", "topic", "topics", "use case", "purpose", "classification"]
-    intendedUse: ["intended use", "purpose", "use case", "use cases", "used for", "designed for", "helps users", "workflow", "task", "goal", "why"]
+    intendedUse: ["intended use", "purpose", "use case", "use cases", "used for", "used", "designed for", "helps users", "workflow", "task", "goal", "why"]
 
   license_patterns:
     - pattern: "bsd\\s*[- ]?3\\s*[- ]?clause|bsd-3-clause"
@@ -70,5 +70,5 @@ property_prompts:
     expected_value_shape: "list of strings [string], else null"
 
   intendedUse:
-    rules: "Return a concise statement of the tasks or use cases the software is explicitly intended to support. Do not infer uses from features or return installation instructions, audience, or a generic description. Return null when the intended use is not supported by evidence."
+    rules: "Return a concise statement of the tasks or use cases the software is explicitly intended to support. Also infer from the whole README and repository description if not explicitly stated. Return null when the intended use is not supported by evidence."
     expected_value_shape: "one concise string describing the intended tasks or use cases, else null"
