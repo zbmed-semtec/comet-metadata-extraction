@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SCHEMAS_PATH = str(BASE_DIR / "schemas")
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
       
+
     # Scehma settings
     comet_schemas_path: str = DEFAULT_SCHEMAS_PATH
     
@@ -70,6 +72,13 @@ class Settings(BaseSettings):
     
     # Logging
     log_level: str = "INFO"
+
+    # Pydantic settings
+    model_config = SettingsConfigDict(
+    env_file=".env",
+    case_sensitive=False,
+    extra="ignore",
+)
 
 
 settings = Settings()

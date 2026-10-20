@@ -31,9 +31,9 @@ class ExtractionState:
       metadata: current aggregate being enriched.
       data: step-local scratchpad for intermediate values.
     """
-    metadata_collector: MetadataCollector 
+    metadata_collector: MetadataCollector
     data: dict[str, Any] = field(default_factory=dict)
-    errors : dict[str, str] = field(default_factory=dict)
+    errors : dict[str, Exception] = field(default_factory=dict)
 
 
 class ExtractionStep(ABC):

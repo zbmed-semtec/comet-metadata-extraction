@@ -1,7 +1,9 @@
 from typing import Any
 
 from linkml_runtime import SchemaView
+from difflib import get_close_matches
 from app.layer_1.schemas.base_schema import BaseSchema
+from app.layer_2.errors import UnknownPropertyError
 
 class LinkMlSchema(BaseSchema):
 
@@ -50,4 +52,11 @@ class LinkMlSchema(BaseSchema):
 
     def get_uri(self, property_name):
         slot = self.schema_view.get_slot(property_name)
+        if slot is None:
+            close = get_close_matches(property_name, self.get_property_list(), n=3, cutoff=0.6)
+            hint = f" Did you mean: {', '.join(close)}?" if close else ""
+            raise UnknownPropertyError(
+                f"Unknown property '{property_name}' for schema "
+                f"'{self.get_schema_name()}:{self.get_class_name()}'.{hint}"
+            )
         return self.schema_view.get_uri(slot, expand=True)

@@ -106,24 +106,6 @@ class CodebergSoftwareVersionExtractor(GitPlatformSoftwareVersionExtractor, Code
     """schema:softwareVersion"""
     name = "codeberg.software_version_extractor"
 
-    def extract(self, context, state):
-        # Extract from releases
-        result = self.get_client(context, state).get_releases()
-        if result and len(result) > 0:
-            version = result[0].get("tag_name")
-            if version:
-                state.metadata_collector.collect("Platform API", 'https://schema.org/softwareVersion', version, 0.95)
-                state.metadata_collector.collect("Platform API", 'https://schema.org/version', version, 0.95)
-        # Extract from tags if no releases found
-        if not result or len(result) == 0:
-            result = self.get_client(context, state).get_tags()
-            if result and len(result) > 0:
-                version = result[0].get("name")
-                if version:
-                    state.metadata_collector.collect("Platform API", 'https://schema.org/softwareVersion', version, 0.95)
-                    state.metadata_collector.collect("Platform API", 'https://schema.org/version', version, 0.95)
-        return super().extract(context, state)
-
 class CodebergHasSourceCodeExtractor(GitPlatformHasSourceCodeExtractor, CodebergBaseExtractor):
     """maSMP:hasSourceCode"""
     name = "codeberg.has_source_code_extractor"
