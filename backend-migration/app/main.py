@@ -1,13 +1,15 @@
 """
 Layer 4 — API entry: FastAPI app wiring (`app.layer_4` routes and middleware).
 """
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
 from app.layer_4.endpoints import metadata
-import app.layer_4.services.metadata_service
+from app.layer_4.services.metadata_service import initialize
 
-app.layer_4.services.metadata_service.initialize()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.api_title,
@@ -27,6 +29,10 @@ app.add_middleware(
 # Include routers
 app.include_router(metadata.router)
 
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize services and opportunistically start Ollama when configured."""
+    initialize()
 
 @app.get("/")
 async def root():
@@ -37,4 +43,3 @@ async def root():
         "docs": "/docs",
         "health": "/api/health"
     }
-
