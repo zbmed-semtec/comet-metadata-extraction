@@ -17,7 +17,7 @@ If you only want to use the backend as a service:
 1. Run the FastAPI server (see [Getting started](getting-started.md))
 2. Open Swagger at `http://localhost:8000/docs`
 3. Call:
-   - `GET /api/metadata/enriched` for UI-friendly results (values + `source`/`confidence`)
+   - `GET /api/metadata/enriched` for UI-friendly results (values + `source`/`source_reliability`)
    - `GET /api/metadata/stream` if you want progress events (SSE)
    - `GET /api/fairness` if you want FAIRness scores
 

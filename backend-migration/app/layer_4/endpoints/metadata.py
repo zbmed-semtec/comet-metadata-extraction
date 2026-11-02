@@ -47,8 +47,8 @@ async def extract_metadata_plain(
     """
     Extract metadata and return **only** the maSMP/CODEMETA JSON-LD.
 
-    Use this for: download, scripts, interoperability. No confidence/source/category.
-    For UI enrichment (confidence, source, category per property), use GET /metadata/enriched.
+    Use this for: download, scripts, interoperability. No source_reliability/source/category.
+    For UI enrichment (source_reliability, source, category per property), use GET /metadata/enriched.
     """
     try:
 
@@ -90,7 +90,7 @@ async def extract_metadata_enriched(
     """
     Extract metadata and return JSON-LD **plus** per-property enrichment.
 
-    Returns results (maSMP/CODEMETA JSON-LD) and enriched_metadata (confidence, source, category per property).
+    Returns results (maSMP/CODEMETA JSON-LD) and enriched_metadata (source_reliability, source, category per property).
     Use this for: UI display. For download or schema-only consumers, use GET /metadata.
     """
     try:
@@ -309,7 +309,7 @@ async def extract_single_property(
     ),
 ) -> SinglePropertyResponse:
     """
-    Extract a **single** metadata property and return its value, source, and confidence.
+    Extract a **single** metadata property and return its value, source, and source reliability.
 
     For CODEMETA, the property is returned under the synthetic \"codemeta\" profile.
     For maSMP, the property may appear in SoftwareSourceCode and/or SoftwareApplication
@@ -352,7 +352,7 @@ async def extract_single_property(
             results=[
                 SinglePropertyItem(
                     value=value,
-                    confidence=extraction_metadata.get("confidence") if extraction_metadata else None,
+                    source_reliability=extraction_metadata.get("source_reliability") if extraction_metadata else None,
                     source=extraction_metadata.get("source") if extraction_metadata else None
                 )
             ],

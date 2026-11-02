@@ -18,11 +18,11 @@
               Source
             </th>
             <th
-              v-if="showConfidence"
+              v-if="showSourceReliability"
               scope="col"
-              class="result-table-confidence px-4 py-3 font-medium text-gray-700 hidden sm:table-cell"
+              class="result-table-source-reliability px-4 py-3 font-medium text-gray-700 hidden sm:table-cell"
             >
-              Confidence
+              Source reliability
             </th>
           </tr>
         </thead>
@@ -166,9 +166,9 @@
                 </template>
               </span>
 
-              <!-- Mobile: inline source & confidence chips below the value -->
+              <!-- Mobile: inline source and source-reliability chips below the value -->
               <div
-                v-if="(showSource || showConfidence) && (row.source || row.confidence)"
+                v-if="(showSource || showSourceReliability) && (row.source || row.source_reliability)"
                 class="mt-2 flex flex-wrap gap-2 sm:hidden"
               >
                 <template v-if="showSource">
@@ -182,10 +182,10 @@
                   </span>
                 </template>
                 <span
-                  v-if="showConfidence"
+                  v-if="showSourceReliability"
                   class="inline-flex items-center rounded-md bg-primary-50 px-2 py-0.5 text-[0.7rem] font-medium text-primary-700"
                 >
-                  {{ row.confidence }}
+                  {{ row.source_reliability }}
                 </span>
               </div>
             </td>
@@ -201,16 +201,16 @@
                 </span>
               </div>
             </td>
-            <td v-if="showConfidence" class="result-table-confidence px-4 py-3 hidden sm:table-cell">
+            <td v-if="showSourceReliability" class="result-table-source-reliability px-4 py-3 hidden sm:table-cell">
               <span
                 class="inline-flex items-center rounded-md bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700"
               >
-                {{ row.confidence }}
+                {{ row.source_reliability }}
               </span>
             </td>
           </tr>
           <tr v-if="!rows.length">
-            <td :colspan="showSource && showConfidence ? 4 : 2" class="px-4 py-6 text-center text-gray-500">
+            <td :colspan="showSource && showSourceReliability ? 4 : 2" class="px-4 py-6 text-center text-gray-500">
               No properties in this section.
             </td>
           </tr>
@@ -227,16 +227,16 @@ withDefaults(
       property: string
       value: string
       source: string | string[]
-      confidence: string
+      source_reliability: string
       authorItems?: { name: string; url?: string }[]
       contributorItems?: { name: string; url?: string }[]
       namedLink?: { name: string; url?: string }
       bibCard?: { title: string; authors: string; url?: string }
     }[]
     showSource: boolean
-    showConfidence: boolean
+    showSourceReliability: boolean
   }>(),
-  { showSource: true, showConfidence: true }
+  { showSource: true, showSourceReliability: true }
 )
 
 const URL_REGEX = /(https?:\/\/[^\s<>"']+)/g
@@ -318,7 +318,7 @@ function normalizeSources(source: string | string[] | undefined): string[] {
 function sourceTagClasses(source: string): string {
   const s = (source || '').toLowerCase()
   // Outline-style chips with white background so they stand apart from
-  // filled value (blue/green) and confidence (purple) chips.
+  // filled value (blue/green) and source-reliability (purple) chips.
   if (!s || s === '—') return 'bg-white text-slate-700 ring-slate-300'
   if (s === 'github_api' || s === 'gitlab_api') return 'bg-white text-sky-800 ring-2 ring-sky-400'
   if (s === 'citation_cff') return 'bg-white text-amber-900 ring-2 ring-amber-400'
@@ -361,8 +361,8 @@ function formatSourceLabel(source: string): string {
 .result-table-source {
   width: 8rem;
 }
-.result-table-confidence {
-  width: 6.5rem;
+.result-table-source-reliability {
+  width: 10rem;
 }
 
 @media (max-width: 640px) {
@@ -375,8 +375,8 @@ function formatSourceLabel(source: string): string {
   .result-table-source {
     width: 6rem;
   }
-  .result-table-confidence {
-    width: 5rem;
+  .result-table-source-reliability {
+    width: 7.5rem;
   }
 }
 </style>

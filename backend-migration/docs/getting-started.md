@@ -10,7 +10,7 @@ Given a repository URL (GitHub or GitLab), the backend:
 2. Extracts signals from repository files and platform APIs
 3. Merges those signals into a single internal `SoftwareMetadata` object
 4. Exports the result as **maSMP** or **CodeMeta** JSON-LD
-5. Optionally returns per-property **source** and **confidence** (enrichment)
+5. Optionally returns per-property **source** and **source_reliability** (enrichment)
 
 ## Prerequisites
 
@@ -56,9 +56,9 @@ curl "http://localhost:8000/api/metadata?repo_url=https://github.com/owner/repo&
 This endpoint returns:
 
 - `results`: maSMP/CODEMETA JSON-LD only
-- no per-property `source`/`confidence` map
+- no per-property `source`/`source_reliability` map
 
-### 2) Extract JSON-LD + enriched source/confidence
+### 2) Extract JSON-LD + enriched source/source_reliability
 
 ```bash
 curl "http://localhost:8000/api/metadata/enriched?repo_url=https://github.com/owner/repo&schema=maSMP"
@@ -69,7 +69,7 @@ This endpoint returns:
 - `results`: maSMP/CODEMETA JSON-LD
 - `enriched_metadata`: for each property key, the UI-ready:
   - `source`
-  - `confidence`
+  - `source_reliability`
   - (maSMP only) `category`
 
 ### 3) Extract a single property
@@ -83,7 +83,7 @@ curl "http://localhost:8000/api/metadata/property?repo_url=https://github.com/ow
 Response shape:
 
 - `results`: a list of matches (because the same property can appear in multiple profiles)
-  - each match includes `{ profile, value, source, confidence }`
+  - each match includes `{ profile, value, source, source_reliability }`
 
 ### 4) Stream progress (SSE)
 

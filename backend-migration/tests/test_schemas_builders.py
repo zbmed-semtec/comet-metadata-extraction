@@ -29,5 +29,5 @@ def test_jsonld_builder_serializes_pydantic_values(connoss_schema):
 
 def test_enriched_metadata_uses_best_record_and_schema_category(collector, connoss_schema):
     out = build_enriched_metadata(collector, connoss_schema)
-    assert out["name"] == {"confidence": .95, "source": "CFF", "category": "Minimum"}
+    assert out["name"] == {"source_reliability": .95, "source": "CFF", "category": "Minimum"}
     assert "codeRepository" not in out

@@ -93,7 +93,7 @@ def _collect_property_results(
                 "property": jsonld_key,
                 "value": jsonld_document[jsonld_key],
                 "source": meta.get("source"),
-                "confidence": meta.get("confidence"),
+                "source_reliability": meta.get("source_reliability"),
                 "category": meta.get("category"),
             }
         )
@@ -157,7 +157,7 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             "property_name": match["property"],
             "property_value": match["value"],
             "source": match.get("source"),
-            "confidence": match.get("confidence"),
+            "source_reliability": match.get("source_reliability"),
         }
         _print_json(output)
 
@@ -215,7 +215,7 @@ def main() -> None:
     extract_parser.add_argument(
         "--with-enrichment",
         action="store_true",
-        help="Include per-property enrichment (source, confidence, category) when available.",
+        help="Include per-property enrichment (source, source_reliability, category) when available.",
     )
     extract_parser.set_defaults(func=_extract_command)
 

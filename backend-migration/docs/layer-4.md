@@ -53,14 +53,14 @@ Lists supported host patterns (GitHub, GitLab).
 
 Returns **JSON-LD only** (`MetadataPlainResponse.results`).
 
-Use when you need the schema document without per-property `source` / `confidence`.
+Use when you need the schema document without per-property `source` / `source_reliability`.
 
 ### `GET /api/metadata/enriched`
 
 Returns JSON-LD plus **`enriched_metadata`** (`MetadataEnrichedResponse`).
 
-- **maSMP** — nested by profile (`maSMP:SoftwareSourceCode`, `maSMP:SoftwareApplication`); each property has `source`, `confidence`, `category`.  
-- **CODEMETA** — flat `codemeta` profile with `source` and `confidence`.
+- **maSMP** — nested by profile (`maSMP:SoftwareSourceCode`, `maSMP:SoftwareApplication`); each property has `source`, `source_reliability`, `category`.  
+- **CODEMETA** — flat `codemeta` profile with `source` and `source_reliability`.
 
 **Provenance flow:**
 
@@ -68,7 +68,7 @@ Returns JSON-LD plus **`enriched_metadata`** (`MetadataEnrichedResponse`).
 2. Use case returns `extraction_metadata` from `collector.get_all()`.  
 3. `build_enriched_metadata()` aligns entity field names with JSON-LD keys.
 
-Multi-source fields expose `source` as a **list**; `confidence` is aggregated (averaged after deduplicating duplicate source ids).
+Multi-source fields expose `source` as a **list**; `source_reliability` is how reliable the winning source is. It is separate from the confidence score produced by the LLM extraction pipeline.
 
 ### `GET /api/metadata/stream` (SSE)
 
@@ -90,13 +90,13 @@ curl -N "http://localhost:8000/api/metadata/stream?repo_url=https://github.com/o
 
 ### `GET /api/metadata/property`
 
-Extract one JSON-LD property with value, source, and confidence.
+Extract one JSON-LD property with value, source, and source reliability.
 
 | Parameter | Description |
 |-----------|-------------|
 | `property` | JSON-LD key (e.g. `author`, `license`, `softwareRequirements`) |
 
-Returns `results`: `[{ "profile", "value", "source", "confidence" }, ...]`.  
+Returns `results`: `[{ "profile", "value", "source", "source_reliability" }, ...]`.  
 On maSMP, the same key may appear in more than one profile.
 
 ### `GET /api/fairness`

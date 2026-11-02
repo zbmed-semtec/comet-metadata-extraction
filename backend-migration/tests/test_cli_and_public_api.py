@@ -12,11 +12,11 @@ def test_property_key_candidates_handles_colon_and_underscore():
     assert _property_key_candidates("name") == ["name"]
 
 def test_collect_property_results_returns_match_with_enrichment_metadata():
-    out = _collect_property_results("connoss", "u", {"name": "X", "@type": "Software"}, {"name": {"source": "API", "confidence": .8, "category": "recommended"}}, "name")
-    assert out["matches"][0] == {"profile": "Software", "property": "name", "value": "X", "source": "API", "confidence": .8, "category": "recommended"}
+    out = _collect_property_results("connoss", "u", {"name": "X", "@type": "Software"}, {"name": {"source": "API", "source_reliability": .8, "category": "recommended"}}, "name")
+    assert out["matches"][0] == {"profile": "Software", "property": "name", "value": "X", "source": "API", "source_reliability": .8, "category": "recommended"}
 
 def test_collect_property_results_normalizes_prefixed_property():
-    out = _collect_property_results("connoss", "u", {"readme": "R", "@type": "Software"}, {"readme": {"source": "API", "confidence": .9}}, "codemeta:readme")
+    out = _collect_property_results("connoss", "u", {"readme": "R", "@type": "Software"}, {"readme": {"source": "API", "source_reliability": .9}}, "codemeta:readme")
     assert out["matches"][0]["value"] == "R"
     assert out["matches"][0]["source"] == "API"
 
@@ -70,11 +70,11 @@ def test_cli_extract_property_no_match_with_errors_mentions_errors(capsys, monke
 
 def test_cli_extract_property_success_emits_flat_output(capsys, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["comet-rs", "extract_property", "https://github.com/a/b", "name", "--schema", "connoss", "--token", "T"])
-    with patch("app.cli.run_extraction", return_value=ExtractionResult({"name": "X"}, ExtractionState(MetadataCollector()), {"name":{"source":"API","confidence":.5,"category":"recommended"}})) as m:
+    with patch("app.cli.run_extraction", return_value=ExtractionResult({"name": "X"}, ExtractionState(MetadataCollector()), {"name":{"source":"API","source_reliability":.5,"category":"recommended"}})) as m:
         main()
     assert m.call_args.kwargs["fairness_assessment"] is False
     out = json.loads(capsys.readouterr().out)
-    assert out == {"property_name": "name", "property_value": "X", "source": "API", "confidence": 0.5}
+    assert out == {"property_name": "name", "property_value": "X", "source": "API", "source_reliability": 0.5}
 
 def test_cli_extract_property_success_does_not_crash_on_extraction_errors(capsys, monkeypatch):
     state = ExtractionState(MetadataCollector())
@@ -90,7 +90,7 @@ def test_cli_extract_property_success_does_not_crash_on_extraction_errors(capsys
 def test_cli_gitlab_url_picks_gitlab_token_from_env(capsys, monkeypatch):
     monkeypatch.setenv("GITLAB_TOKEN", "gl-token"); monkeypatch.setenv("GITHUB_TOKEN", "gh-token")
     monkeypatch.setattr(sys, "argv", ["comet-rs", "extract_property", "https://gitlab.com/a/b", "name"])
-    with patch("app.cli.run_extraction", return_value=ExtractionResult({"name": "X"}, ExtractionState(MetadataCollector()), {"name":{"source":"API","confidence":1,"category":"recommended"}})) as m:
+    with patch("app.cli.run_extraction", return_value=ExtractionResult({"name": "X"}, ExtractionState(MetadataCollector()), {"name":{"source":"API","source_reliability":1,"category":"recommended"}})) as m:
         main()
     assert m.call_args.kwargs["access_token"] == "gl-token"
 

@@ -18,7 +18,7 @@ class MetadataPlainResponse(BaseModel):
     results: Dict[str, Any]
 
 class MetadataEnrichedResponse(BaseModel):
-    """Response for GET /metadata/enriched: JSON-LD plus confidence, source, category per property."""
+    """Response for GET /metadata/enriched: JSON-LD plus source_reliability, source, category per property."""
 
     model_config = ConfigDict(populate_by_name=True)
     status: str
@@ -36,7 +36,7 @@ class SinglePropertyItem(BaseModel):
 
     value: Any
     source: Optional[Any] = None
-    confidence: Optional[float] = None
+    source_reliability: Optional[float] = None
 
 
 class SinglePropertyResponse(BaseModel):
