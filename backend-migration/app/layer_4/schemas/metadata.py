@@ -37,6 +37,8 @@ class SinglePropertyItem(BaseModel):
     value: Any
     source: Optional[Any] = None
     source_reliability: Optional[float] = None
+    confidence: Optional[float] = None
+    evidence: Optional[Any] = None
 
 
 class SinglePropertyResponse(BaseModel):

@@ -353,7 +353,9 @@ async def extract_single_property(
                 SinglePropertyItem(
                     value=value,
                     source_reliability=extraction_metadata.get("source_reliability") if extraction_metadata else None,
-                    source=extraction_metadata.get("source") if extraction_metadata else None
+                    source=extraction_metadata.get("source") if extraction_metadata else None,
+                    confidence=extraction_metadata.get("confidence") if extraction_metadata else None,
+                    evidence=extraction_metadata.get("evidence") if extraction_metadata else None,
                 )
             ],
         )

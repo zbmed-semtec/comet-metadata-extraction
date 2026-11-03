@@ -13,7 +13,8 @@ def build_enriched_metadata(
 ) -> Dict[str, Any]:
     """
     Build enriched_metadata for the API response: per-profile, per-property annotations only.
-    No value (get that from results); only source_reliability, source, category.
+    No value (get that from results); source_reliability, source, and category, plus
+    the LLM pipeline's confidence and evidence when that source supplied the value.
     source_reliability is how reliable the winning source is. It is separate from
     the confidence score returned by the LLM extraction pipeline.
     - For maSMP: per-profile (SoftwareSourceCode / SoftwareApplication), with category.
@@ -34,9 +35,14 @@ def build_enriched_metadata(
             category = "optional"
         if not record:
             continue
-        result[prop] = {
+        entry = {
             "source_reliability": record.confidence,
             "source": record.source,
             "category": category,
         }
+        if record.extraction_confidence is not None:
+            entry["confidence"] = record.extraction_confidence
+        if record.evidence:
+            entry["evidence"] = record.evidence
+        result[prop] = entry
     return result
