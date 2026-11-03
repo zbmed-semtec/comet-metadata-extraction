@@ -166,6 +166,15 @@
                 </template>
               </span>
 
+              <p
+                v-if="row.confidence || row.evidence"
+                class="mt-2 max-w-full text-xs leading-relaxed text-gray-500"
+              >
+                <span v-if="row.confidence" class="font-medium text-gray-600">Confidence {{ row.confidence }}</span>
+                <span v-if="row.confidence && row.evidence"> · </span>
+                <span v-if="row.evidence">Evidence: {{ row.evidence }}</span>
+              </p>
+
               <!-- Mobile: inline source and source-reliability chips below the value -->
               <div
                 v-if="(showSource || showSourceReliability) && (row.source || row.source_reliability)"
@@ -228,6 +237,8 @@ withDefaults(
       value: string
       source: string | string[]
       source_reliability: string
+      confidence?: string
+      evidence?: string
       authorItems?: { name: string; url?: string }[]
       contributorItems?: { name: string; url?: string }[]
       namedLink?: { name: string; url?: string }

@@ -110,7 +110,7 @@ const resultData = computed<Record<string, unknown>>(() => {
   return data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {}
 })
 
-/** The enriched metadata map (flat map of property -> { source_reliability, source, category }). */
+/** The enriched metadata map (property -> source reliability, source, category, and LLM confidence/evidence). */
 const enrichedData = computed<Record<string, EnrichedProperty>>(() => {
   const data = props.result?.enriched_metadata
   return data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, EnrichedProperty> : {}
@@ -149,6 +149,8 @@ function rowsByCategory(category: string) {
         value: useSpecial ? '' : formatValueForProperty(prop, val),
         source: meta?.source ?? '—',
         source_reliability: meta?.source_reliability != null ? `${Math.round(Number(meta.source_reliability) * 100)}%` : '—',
+        confidence: meta?.confidence != null ? `${Math.round(Number(meta.confidence) * 100)}%` : '',
+        evidence: meta?.evidence ? String(meta.evidence) : '',
         ...(authorItems ? { authorItems } : {}),
         ...(contributorItems ? { contributorItems } : {}),
         ...(namedLink ? { namedLink } : {}),
