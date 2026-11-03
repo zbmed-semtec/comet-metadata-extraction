@@ -297,7 +297,7 @@ class GitPlatformClient(CachingHttpClient, ABC):
 
     def discover_license_candidates(self) -> list[RepositoryItem]:
         """Finds files in the repository whose names suggest they are license files."""
-        return self._discover_files_by_prefix("license")
+        return list(set(self._discover_files_by_prefix("license") + self._discover_files_by_prefix("licence")))
 
     def discover_citation_candidates(self) -> list[RepositoryItem]:
         """Finds files in the repository whose names suggest they are citation files."""

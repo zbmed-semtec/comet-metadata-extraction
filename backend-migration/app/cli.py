@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi.encoders import jsonable_encoder
 
+from app.config.settings import settings
 from app.layer_4.services.metadata_service import run_extraction, initialize
 from app.layer_4.services.fairness_service import run_fairness_assessment
 from app.layer_2.errors import UnknownPropertyError
@@ -20,6 +21,7 @@ def _print_json(data: Any) -> None:
     safe_data = jsonable_encoder(data)
     json.dump(safe_data, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
+
 
 def _extract_command(args: argparse.Namespace) -> None:
     initialize()

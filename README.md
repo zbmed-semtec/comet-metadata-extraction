@@ -28,8 +28,6 @@ To use CoMET as a `cli` tool, you can either perform a [manual installation](#ma
 
 **Requirements:** Python 3.10 or higher for the backend/CLI; Node.js 20.20.0 for the frontend (only needed for manual frontend setup).
 
-# Installation
-
 Here you find instructions for performing the different types of installations possible for CoMET.
 
 ## Docker

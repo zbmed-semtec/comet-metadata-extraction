@@ -1,0 +1,74 @@
+version: 1
+system_prompts:
+  json_only: "Return valid JSON only."
+
+retrieval:
+  property_queries:
+    license: ["license", "licensing", "copyright", "spdx"]
+    installation: ["installation", "install", "pip", "conda", "requirements", "setup"]
+    contact: ["contact", "email", "maintainer", "author"]
+    description: ["overview", "about", "purpose", "project", "toolkit", "library", "framework", "features", "introduction"]
+    name: ["name", "title", "project", "repository", "repo", "library", "package", "software", "product", "header", "publication title","long name"]
+    alternateNames: [ "alternate name", "alternative name", "aka", "also known as", "alias", "aliases", "renamed", "short name", "abbreviation", "acronym", "nickname", "code name"]
+    buildInstructions: ["build", "building", "compile", "compilation", "source", "from source", "make", "cmake", "bazel", "wheel", "build from source", "build instructions", "development setup", "dev setup", "docker build", "dockerfile", "pip", "setup"]
+    applicationCategory: ["category", "type", "domain", "application type", "software type", "tag", "tags", "topic", "topics", "use case", "purpose", "classification"]
+    intendedUse: ["intended use", "purpose", "use case", "use cases", "used for", "used", "designed for", "helps users", "workflow", "task", "goal", "why"]
+
+  license_patterns:
+    - pattern: "bsd\\s*[- ]?3\\s*[- ]?clause|bsd-3-clause"
+      value: "BSD-3-Clause"
+    - pattern: "bsd\\s*[- ]?2\\s*[- ]?clause|bsd-2-clause"
+      value: "BSD-2-Clause"
+    - pattern: "\\bmit\\b(?:\\s+license)?"
+      value: "MIT"
+    - pattern: "apache\\s*2\\.0|apache-2\\.0|apache license"
+      value: "Apache-2.0"
+    - pattern: "gpl\\s*v?3|gnu\\s+general\\s+public\\s+license\\s*v?3"
+      value: "GPL-3.0"
+    - pattern: "gpl\\s*v?2|gnu\\s+general\\s+public\\s+license\\s*v?2"
+      value: "GPL-2.0"
+    - pattern: "lgpl\\s*v?3|lesser\\s+general\\s+public\\s+license\\s*v?3"
+      value: "LGPL-3.0"
+    - pattern: "mpl\\s*2\\.0|mozilla\\s+public\\s+license\\s*2\\.0"
+      value: "MPL-2.0"
+
+property_prompts:
+  default:
+    rules: "Return concise value and evidence quote if available."
+    expected_value_shape: "null if unknown"
+
+  license:
+    rules: "Return normalized SPDX license and exact evidence quote when possible."
+    expected_value_shape: "normalized SPDX-style string if explicit, else null"
+
+  installation:
+    rules: "Return one explicit URL to installation instructions from the README, else null. Do not return a command summary."
+    expected_value_shape: "absolute URL string, else null"
+
+  contact:
+    rules: "Return email or contact link, else null."
+    expected_value_shape: "email or contact link, else null"
+
+  description:
+    rules: "Return factual concise repository description from evidence only."
+    expected_value_shape: "one or two concise lines describing what the repository does, else null"
+
+  name:
+    rules: "Return primary software or heading of the readme or repository name as stated in evidence, else null."
+    expected_value_shape: "string, else null"
+
+  alternateNames:
+    rules: "Return list of alternative names, aliases, former names, or acronyms if explicitly mentioned, else null."
+    expected_value_shape: "list of strings [string], else null"
+
+  buildInstructions:
+    rules: "Return one explicit URL to source build or compilation instructions from the README, else null. Do not return a command summary."
+    expected_value_shape: "absolute URL string, else null"
+
+  applicationCategory:
+    rules: "Return software domain or classification tags from evidence, else null."
+    expected_value_shape: "list of strings [string], else null"
+
+  intendedUse:
+    rules: "Return a concise statement of the tasks or use cases the software is explicitly intended to support. Also infer from the whole README and repository description if not explicitly stated. Return null when the intended use is not supported by evidence."
+    expected_value_shape: "one concise string describing the intended tasks or use cases, else null"

@@ -118,7 +118,6 @@ def _create_extraction_use_case() -> tuple[ExtractMetadataUseCase, MetadataColle
 
     return use_case, collector
 
-
 def run_extraction(
     repo_url: str,
     schema_name: str,

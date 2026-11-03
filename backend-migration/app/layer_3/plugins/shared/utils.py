@@ -1,10 +1,7 @@
-import datetime
 import re
 import tempfile
 import os
 import re
-from scancode.api import get_licenses
-
 from dateutil import parser as date_parser
 
 
@@ -52,19 +49,6 @@ def iso_dt_to_str(iso_dt):
         raise ValueError(f"Could not parse datetime string: {iso_dt!r}") from exc
 
     return str(dt.date())
-
-def match_license_text(text: str):
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False, encoding="utf-8"
-    ) as tmp:
-        tmp.write(text)
-        tmp_path = tmp.name
-
-    try:
-        results = get_licenses(tmp_path)
-        return results
-    finally:
-        os.remove(tmp_path)
 
 dependency_files = {
     # Python

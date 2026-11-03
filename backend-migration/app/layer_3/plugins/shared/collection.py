@@ -13,7 +13,8 @@ from app.layer_3.plugins.shared.types.person import Person
 from app.layer_3.plugins.shared.types.online_account import OnlineAccount
 from app.layer_3.plugins.shared.git_platform_base_extractor import GitPlatformBaseExtractor
 from app.layer_3.plugins.url_pattern_matcher_plugin import URLPatternMatcher
-from app.layer_3.plugins.shared.utils import match_license_text, dependency_files, iso_dt_to_str
+from app.layer_3.plugins.shared.utils import dependency_files, iso_dt_to_str
+from app.layer_3.plugins.shared.license_detection import match_spdx_license
 from app.layer_3.plugins.shared.external_services.wayback_client import WaybackClient
 from app.layer_3.plugins.shared.external_services.software_heritage_client import SoftwareHeritageClient
 from app.layer_3.plugins.shared.external_services.open_alex_client import OpenAlexClient
@@ -187,64 +188,88 @@ class GitPlatformLicenseExtractor(GitPlatformBaseExtractor):
     """schema:license"""
 
     extracts = {'https://schema.org/license'}
-
+    
     def extract(self, context, state):
-        # from License File
+        # From License File
         client = self.get_client(context, state)
         license_candidates = client.get_license_candidate_files()
         for license_candidate in license_candidates:
             text = license_candidate.get_content()
-            result = match_license_text(text)
-            spdx_id = result["detected_license_expression_spdx"]
-            conf    = result["percentage_of_license_text"] * 0.95 / 100.0
-            license_object = {
-                '@type': 'CreativeWork',
-                '@context': 'https://schema.org',
-                'name': spdx_id,
-                'url' : f'https://spdx.org/licenses/{spdx_id}.html'
-            }
-            state.metadata_collector.collect("License File", 'https://schema.org/license', license_object, conf)
+            if not text:
+                continue
+
+            matches = match_spdx_license(text)
+            if matches:
+                # Pick the candidate with the highest confidence score
+                best_match = max(matches, key=lambda m: m.confidence)
+                spdx_id = best_match.license.spdx_id
+
+                if spdx_id:
+                    # best_match.confidence is in [0.0, 1.0], scaled by 0.95
+                    conf = best_match.confidence * 0.95
+                    license_object = {
+                        '@type': 'CreativeWork',
+                        '@context': 'https://schema.org',
+                        'name': spdx_id,
+                        'url': f'https://spdx.org/licenses/{spdx_id}.html',
+                    }
+                    state.metadata_collector.collect(
+                        "License File",
+                        'https://schema.org/license',
+                        license_object,
+                        conf,
+                    )
+
         # From CFF File
         citations = client.get_parsed_citations()
         for citation in citations:
             if 'license' in citation:
                 license_value = citation.get('license')
                 if license_value:
-                    result = match_license_text(license_value)
-                    spdx_id = result["detected_license_expression_spdx"]
-                    conf    = result["percentage_of_license_text"] * 0.85 / 100.0
-                    if spdx_id:
+                    matches = match_spdx_license(license_value)
+                    best_match = max(matches, key=lambda m: m.confidence) if matches else None
+
+                    if best_match and best_match.license.spdx_id:
+                        spdx_id = best_match.license.spdx_id
+                        conf = best_match.confidence * 0.85
                         license_object = {
                             '@type': 'CreativeWork',
                             '@context': 'https://schema.org',
                             'name': spdx_id,
-                            'url' : f'https://spdx.org/licenses/{spdx_id}.html'
+                            'url': f'https://spdx.org/licenses/{spdx_id}.html',
                         }
                     else:
                         # Fall back to using the raw citation value as the name
                         # if no SPDX match could be determined.
+                        conf = 0.0
                         license_object = {
                             '@type': 'CreativeWork',
                             '@context': 'https://schema.org',
-                            'name': license_value
+                            'name': license_value,
                         }
+
                     state.metadata_collector.collect(
                         "CFF File", 'https://schema.org/license', license_object, conf
                     )
+
             if 'license-url' in citation:
                 license_url = citation.get('license-url')
                 if license_url:
                     license_object = {
                         '@type': 'CreativeWork',
                         '@context': 'https://schema.org',
-                        'url': license_url
+                        'url': license_url,
                     }
                     # license-url is an explicit, author-provided value, so we treat
                     # it with high confidence, similar to other direct metadata fields.
                     conf = 0.9
                     state.metadata_collector.collect(
-                        "CITATION.cff", 'https://schema.org/license', license_object, conf
+                        "CITATION.cff",
+                        'https://schema.org/license',
+                        license_object,
+                        conf,
                     )
+
         return state
 
 class GitPlatformIdentifierExtractor(GitPlatformBaseExtractor):
