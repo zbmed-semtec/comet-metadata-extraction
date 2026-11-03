@@ -8,7 +8,11 @@ class MetadataProperty(Generic[T]):
     source: str
     property_name: str
     property_value: T
+    # Ranking weight of this source. Callers that omit it are treated as fully reliable.
+    # The LLM evidence score is stored separately in extraction_confidence.
     confidence: float = 1.0
+    evidence: Any = None
+    extraction_confidence: float | None = None
 
 class MetadataCollector:
     data : dict[str, list[MetadataProperty]]
@@ -16,11 +20,29 @@ class MetadataCollector:
     def __init__(self):
         self.data = {}
     
-    def collect(self, source: str, property_name: str, property_value: Any, confidence:float=1.0):
+    def collect(
+        self,
+        source: str,
+        property_name: str,
+        property_value: Any,
+        confidence: float = 1.0,
+        *,
+        evidence: Any = None,
+        extraction_confidence: float | None = None,
+    ):
         if not property_name in self.data:
             self.data[property_name] = []
         all_records = self.data[property_name]
-        all_records.append(MetadataProperty(source, property_name, property_value, confidence))
+        all_records.append(
+            MetadataProperty(
+                source,
+                property_name,
+                property_value,
+                confidence,
+                evidence,
+                extraction_confidence,
+            )
+        )
         self.data[property_name] = all_records
     
     def get(self, property_name: str) -> dict[str, Any] | Any:
