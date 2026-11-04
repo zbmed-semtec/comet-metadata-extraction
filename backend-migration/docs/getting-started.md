@@ -1,106 +1,116 @@
 # Getting Started
 
-This guide is for beginners. It shows you how to run the backend locally and how to call the API endpoints (which is what **Layer 4** exposes).
+Run the backend locally and call the HTTP API. The routes live in Layer 4.
+
+To install the package and run the `comet-rs` command (extract, single property, FAIRness), see [README_PYPI.md](README_PYPI.md).
 
 ## What you get
 
-Given a repository URL (GitHub or GitLab), the backend:
+Given a repository URL, the backend:
 
-1. Detects the platform (GitHub/GitLab)
-2. Extracts signals from repository files and platform APIs
-3. Merges those signals into a single internal `SoftwareMetadata` object
-4. Exports the result as **maSMP** or **CodeMeta** JSON-LD
-5. Optionally returns per-property **source** and **source_reliability** (enrichment)
+1. Loads the requested LinkML schema and class
+2. Selects extraction plugins that declare that schema's properties and match the repository host
+3. Lets each plugin record candidates (source, value, confidence) on a `MetadataCollector`
+4. Exports the highest-confidence value of each property as JSON-LD
+5. Optionally returns per-property source, source reliability, and category
+
+Supported hosts: GitHub, GitLab, Codeberg. Supported schemas: `ConnOSS` (class `Software`), `maSMP` (`SoftwareSourceCode`, `SoftwareApplication`), `CODEMETA` (`SoftwareSourceCode`).
 
 ## Prerequisites
 
 - Python 3.10+
-- A way to run the backend (local terminal)
+- A terminal in `backend-migration/`
 
-## Run the server (local)
-
-From `backend-migration/`:
+## Run the server
 
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Schemas load from `schemas/` (override with `COMET_SCHEMAS_PATH`).
+
 Then open:
 
 - Swagger UI: `http://localhost:8000/docs`
 - Health check: `http://localhost:8000/api/health`
 
-### View this documentation locally
+### View this documentation
 
-From `backend-migration/` (port **8002** so it does not clash with the API on **8000**):
+Port **8002** keeps MkDocs off the API port:
 
 ```bash
 mkdocs serve
 ```
 
-Open `http://127.0.0.1:8002/`. If you see “Address already in use”, pick another port:
+Open `http://127.0.0.1:8002/`. If that port is taken:
 
 ```bash
 mkdocs serve -a 127.0.0.1:8003
 ```
 
-## Call the API (copy/paste examples)
+## Call the API
 
-### 1) Extract JSON-LD only (no enrichment)
+Query parameters used below:
 
-```bash
-curl "http://localhost:8000/api/metadata?repo_url=https://github.com/owner/repo&schema=maSMP"
-```
+| Parameter | Default | Role |
+|-----------|---------|------|
+| `repo_url` | required | GitHub, GitLab, or Codeberg repository URL |
+| `schema` | `ConnOSS` | `ConnOSS`, `maSMP`, or `CODEMETA` |
+| `schema_class` | `Software` | LinkML class inside that schema |
+| `access_token` | omitted | Token for private repositories and higher rate limits |
 
-This endpoint returns:
+`schema_class` must exist on the chosen schema. `Software` matches ConnOSS. For maSMP pass `SoftwareSourceCode` or `SoftwareApplication`. For CodeMeta pass `SoftwareSourceCode`.
 
-- `results`: maSMP/CODEMETA JSON-LD only
-- no per-property `source`/`source_reliability` map
-
-### 2) Extract JSON-LD + enriched source/source_reliability
-
-```bash
-curl "http://localhost:8000/api/metadata/enriched?repo_url=https://github.com/owner/repo&schema=maSMP"
-```
-
-This endpoint returns:
-
-- `results`: maSMP/CODEMETA JSON-LD
-- `enriched_metadata`: for each property key, the UI-ready:
-  - `source`
-  - `source_reliability`
-  - (maSMP only) `category`
-
-### 3) Extract a single property
-
-If you want only one field (for example `author`):
+### 1) JSON-LD only
 
 ```bash
-curl "http://localhost:8000/api/metadata/property?repo_url=https://github.com/owner/repo&schema=maSMP&property=author"
+curl "http://localhost:8000/api/metadata?repo_url=https://github.com/owner/repo&schema=ConnOSS"
 ```
 
-Response shape:
+`results` is the JSON-LD document. There is no per-property source map.
 
-- `results`: a list of matches (because the same property can appear in multiple profiles)
-  - each match includes `{ profile, value, source, source_reliability }`
-
-### 4) Stream progress (SSE)
+### 2) JSON-LD plus enrichment
 
 ```bash
-curl -N "http://localhost:8000/api/metadata/stream?repo_url=https://github.com/owner/repo&schema=maSMP"
+curl "http://localhost:8000/api/metadata/enriched?repo_url=https://github.com/owner/repo&schema=ConnOSS"
 ```
 
-You will receive events:
+`enriched_metadata` adds, for each property that has a value:
 
-- `progress`: coarse phases `pipeline` and `jsonld_build`, each with `status` `started` or `completed`
-- `result`: the same payload you get from `/api/metadata/enriched`
-- `error`: an error message if extraction fails
+- `source` — label of the winning candidate (`Platform API`, `CFF File`, …)
+- `source_reliability` — confidence of that candidate
+- `category` — schema slot category, or `optional` when the slot has none
+- `confidence` and `evidence` when the winner came from the LLM plugin
+
+For `schema=ConnOSS` the same response also includes a `fairness` report. Other schemas omit it. There is no separate `/api/fairness` route.
+
+### 3) One property
+
+```bash
+curl "http://localhost:8000/api/metadata/property?repo_url=https://github.com/owner/repo&schema=ConnOSS&property=name"
+```
+
+`results` is a list of `{ value, source, source_reliability, confidence, evidence }`.
+
+### 4) Stream progress
+
+```bash
+curl -N "http://localhost:8000/api/metadata/stream?repo_url=https://github.com/owner/repo&schema=ConnOSS"
+```
+
+Events:
+
+- `progress` — phases `pipeline` and `jsonld_build`, each `started` then `completed`
+- `result` — the enriched payload
+- `error` — `{ "detail": "..." }`
+
+## Optional LLM extraction
+
+LLM plugins stay idle unless enabled. See `app/layer_3/plugins/llm/README.md`. When enabled they run after the platform plugins and only fill properties that still have no candidate.
 
 ## What to read next
 
-- [Layer 1: Domain Models, Schemas, And Provenance](layer-1.md)
-- [Layer 2: Application Use Cases](layer-2.md)
-- [Layer 3: Pipelines, Adapters, And Extraction Steps](layer-3.md)
-- [Layer 4: API](layer-4.md)
-
+- [Run comet-rs](README_PYPI.md) — CLI and library usage
+- [Architecture](architecture.md)
+- [Layer 1](layer-1.md) through [Layer 4](layer-4.md)

@@ -1,119 +1,115 @@
-# Layer 4: API (FastAPI)
+# Layer 4: API
 
-Layer 4 exposes the backend over HTTP: **routes**, **Pydantic response models**, and **services** that wire `ExtractMetadataUseCase` and shape responses for clients.
+Layer 4 is the FastAPI surface: routes, response models, and the service that wires `ExtractMetadataUseCase`.
 
-Entry point: `app/main.py` (CORS, router registration). Routes: `app/layer_4/endpoints/metadata.py`.
+Entry point: `app/main.py` (CORS, router, schema load on startup). Routes: `app/layer_4/endpoints/metadata.py`.
 
-## Base URL
-
-- API prefix: `/api`  
-- Local server: `http://localhost:8000`  
-- Interactive docs: `http://localhost:8000/docs`
-
-## Folder structure
+## Layout
 
 ```text
 app/layer_4/
-|-- endpoints/
-|   `-- metadata.py          # All /api routes
-|-- services/
-|   |-- metadata_service.py  # run_extraction, streaming, single property
-|   `-- fairness_service.py  # FAIRness assessment
-|-- builders/
-|   `-- enriched_metadata.py # Map collector output to enriched_metadata
-`-- schemas/
-    `-- metadata.py          # MetadataPlainResponse, MetadataEnrichedResponse, ...
+|-- endpoints/metadata.py           # /api routes
+|-- services/metadata_service.py    # run_extraction
+|-- services/fairness_service.py    # older helper, not used by the routes
+|-- builders/enriched_metadata.py   # collector -> enriched_metadata
+`-- schemas/metadata.py             # response models
 ```
 
-Layer 2 runs the use case; Layer 3 fills `SoftwareMetadata` and records provenance; Layer 4 returns JSON to the client.
+## Base URL
 
-## Common query parameters
+- Prefix: `/api`
+- Local server: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+
+Startup calls `metadata_service.initialize()`, which loads every LinkML file from `COMET_SCHEMAS_PATH` (default `schemas/`).
+
+## Query parameters
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `repo_url` | yes | GitHub or GitLab repository URL |
-| `schema` | no (default `maSMP`) | `maSMP` or `CODEMETA` |
+| `repo_url` | yes | GitHub, GitLab, or Codeberg repository URL |
+| `schema` | no, default `ConnOSS` | `ConnOSS`, `maSMP`, or `CODEMETA` |
+| `schema_class` | no, default `Software` | LinkML class. Use `SoftwareSourceCode` or `SoftwareApplication` for maSMP, and `SoftwareSourceCode` for CodeMeta |
 | `access_token` | no | Token for private repositories |
+
+## Wiring
+
+`run_extraction` in `metadata_service.py` is the function every route calls.
+
+1. Create a `MetadataCollector` and an `ExtractMetadataUseCase` with the shared `JSONLDBuilder`, `PluginPipelineComposer`, and `ExtractionPipelineRunner`.
+2. Resolve `schema` + `schema_class` through `LinkMlSchemaRegistry`.
+3. `use_case.execute(...)`.
+4. If enrichment was requested, `build_enriched_metadata(collector, schema)`.
+5. If a FAIR assessment was requested, `evaluate_fairness` on the JSON-LD.
+
+A plugin failure stays on `extraction_state.errors` and is returned as `errors`. It does not fail the HTTP call by itself. Unknown schema, unknown property, and unsupported input surface as HTTP 400.
 
 ## Endpoints
 
 ### `GET /api/health`
 
-Health check: `{"status": "healthy", "service": "metadata-extractor"}`.
+`{"status": "healthy", "service": "metadata-extractor"}`.
 
 ### `GET /`
 
-Welcome JSON with links to `/docs` and `/api/health`.
+Welcome payload with links to `/docs` and `/api/health`.
 
 ### `GET /api/platforms`
 
-Lists supported host patterns (GitHub, GitLab).
+GitHub (`github.com`), GitLab (`gitlab.com`), Codeberg (`codeberg.org`).
 
 ### `GET /api/metadata`
 
-Returns **JSON-LD only** (`MetadataPlainResponse.results`).
-
-Use when you need the schema document without per-property `source` / `source_reliability`.
+JSON-LD only (`MetadataPlainResponse.results`). Use this when the caller does not need source or confidence.
 
 ### `GET /api/metadata/enriched`
 
-Returns JSON-LD plus **`enriched_metadata`** (`MetadataEnrichedResponse`).
+JSON-LD plus `enriched_metadata`. This route also runs the FAIR assessment. The `fairness` field is included only when `schema` is `ConnOSS`.
 
-- **maSMP** — nested by profile (`maSMP:SoftwareSourceCode`, `maSMP:SoftwareApplication`); each property has `source`, `source_reliability`, `category`.  
-- **CODEMETA** — flat `codemeta` profile with `source` and `source_reliability`.
+`enriched_metadata` is one object per slot that has a winning record:
 
-**Provenance flow:**
+| Field | Source |
+|-------|--------|
+| `source` | Winning `MetadataProperty.source` |
+| `source_reliability` | Winning `confidence` |
+| `category` | LinkML slot category, or `optional` |
+| `confidence` | Present when the winner set `extraction_confidence` |
+| `evidence` | Present when the winner attached evidence |
 
-1. Layer 3 merge/extract steps record into `ExtractionMetadataCollector`.  
-2. Use case returns `extraction_metadata` from `collector.get_all()`.  
-3. `build_enriched_metadata()` aligns entity field names with JSON-LD keys.
+`alternatives` is the collector's full list of records for every URI, including the ones that lost on confidence.
 
-Multi-source fields expose `source` as a **list**; `source_reliability` is how reliable the winning source is. It is separate from the confidence score produced by the LLM extraction pipeline.
+Provenance path:
 
-### `GET /api/metadata/stream` (SSE)
+1. Plugins `collect` into the `MetadataCollector`.
+2. `JSONLDBuilder` reads `get_most_confident` into `results`.
+3. `build_enriched_metadata` reads the same winner into `enriched_metadata`.
 
-Same final payload as `/api/metadata/enriched`, with **Server-Sent Events** during the run.
+### `GET /api/metadata/stream`
 
-Events:
+Server-Sent Events, then the enriched payload.
 
 | Event | Payload |
 |-------|---------|
 | `progress` | `{ "step": "pipeline" \| "jsonld_build", "status": "started" \| "completed", "label": "..." }` |
-| `result` | Full enriched response (same shape as `/api/metadata/enriched`) |
+| `result` | Enriched response |
 | `error` | `{ "detail": "..." }` |
 
-Example:
-
 ```bash
-curl -N "http://localhost:8000/api/metadata/stream?repo_url=https://github.com/owner/repo&schema=maSMP"
+curl -N "http://localhost:8000/api/metadata/stream?repo_url=https://github.com/owner/repo&schema=ConnOSS"
 ```
 
 ### `GET /api/metadata/property`
 
-Extract one JSON-LD property with value, source, and source reliability.
+One slot. Query parameter `property` is the slot name (`name`, `license`, `softwareRequirements`).
 
-| Parameter | Description |
-|-----------|-------------|
-| `property` | JSON-LD key (e.g. `author`, `license`, `softwareRequirements`) |
+The route runs extraction with `single_property` set, so the composer only includes plugins that declare that slot. The response `results` list holds `value`, `source`, `source_reliability`, and, when present, `confidence` and `evidence`.
 
-Returns `results`: `[{ "profile", "value", "source", "source_reliability" }, ...]`.  
-On maSMP, the same key may appear in more than one profile.
+### FAIR route
 
-### `GET /api/fairness`
-
-Runs extraction and returns JSON-LD plus a **FAIRness** report (`fairness` object with F/A/I/R scores).  
-Scoring uses `SoftwareMetadata` in Layer 3 (`fairness_evaluator.py`), so scores do not depend on maSMP vs CODEMETA choice; only the JSON-LD shape does.
-
-## Services (wiring)
-
-**`metadata_service.py`** — shared `JSONLDBuilder`, `PipelineComposer`, `PipelineRunner`; creates the use case with optional `InMemoryExtractionMetadataCollector`.
-
-**`fairness_service.py`** — extraction + `evaluate_fairness_from_metadata()`.
-
-Endpoints stay thin: validate platform, call service, map to response schema.
+`GET /api/fairness` is not registered. FAIR scores are the `fairness` object on `GET /api/metadata/enriched` for ConnOSS.
 
 ## Where to read next
 
-- [Getting started](getting-started.md) — run server and try endpoints  
-- [Layer 2](layer-2.md) — use case  
-- [Layer 3](layer-3.md) — steps and provenance recording  
+- [Getting started](getting-started.md) — copy-paste calls
+- [Layer 2](layer-2.md) — the use case these routes invoke
+- [Layer 3](layer-3.md) — plugins and JSON-LD export

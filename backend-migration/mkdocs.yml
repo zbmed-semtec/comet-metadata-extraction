@@ -35,6 +35,7 @@ theme:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Run comet-rs: README_PYPI.md
   - Architecture: architecture.md
   - Layer 1: layer-1.md
   - Layer 2: layer-2.md

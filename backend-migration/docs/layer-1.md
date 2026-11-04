@@ -1,113 +1,63 @@
-# Layer 1: Domain Models, Schemas, And Provenance
+# Layer 1: Schema Contract And Collected Values
 
-Layer 1 defines what metadata *means* in this backend: the internal `SoftwareMetadata` model, maSMP/CodeMeta export rules, and provenance (which extraction sources may set which fields and with what default confidence).
-
-It does not call GitHub/GitLab, read files, or serve HTTP. Those belong to outer layers.
-
-## What is a domain?
-
-The main domain is **research software metadata**: repository URL, authors, license, programming languages, citations, releases, documentation, archival links, and related concepts.
-
-The package layout leaves room for additional domains later (for example training materials) without overloading the software model:
+Layer 1 defines two things: what a schema can be asked for, and where extracted values are stored. It does not call GitHub, read files, or serve HTTP.
 
 ```text
 app/layer_1/
-|-- entities/
 |-- schemas/
-`-- provenance/
+|   |-- base_schema.py            # BaseSchema
+|   `-- base_schema_registry.py   # BaseSchemaRegistry
+`-- metadata_collector/
+    `-- metadata_collector.py     # MetadataProperty, MetadataCollector
 ```
 
-## What is an entity?
+The concrete schema is LinkML, implemented in Layer 3 (`LinkMlSchema`). Layer 1 only declares the methods every schema must provide.
 
-An **entity** is a core domain model, not a database row or an API DTO.
+## Schema contract
 
-The central entity is **`SoftwareMetadata`**: an internal worksheet that extraction steps fill from every source.
+`BaseSchema` is the view the rest of the backend uses:
 
-```text
-GitHub / GitLab API
-CITATION.cff
-README
-LICENSE
-OpenAlex, Zenodo, Wayback, Software Heritage
-      |
-      v
-SoftwareMetadata
-      |
-      v
-maSMP or CodeMeta JSON-LD (at export time)
+| Method | Returns |
+|--------|---------|
+| `get_schema_name()` | Schema name (`connoss`, `maSMP`, `codemeta`) |
+| `get_class_name()` | Class inside that schema (`Software`, `SoftwareSourceCode`, …) |
+| `get_property_list()` | Slot names to extract and export |
+| `get_uri(property_name)` | Expanded URI plugins use as the property key |
+| `get_categories_of(property_name)` | Slot category, used in enriched responses |
+| `get_prefixes()` / `build_context()` | JSON-LD `@context` |
+
+Plugins and the composer key off the URI, not the slot name. `https://schema.org/name` is the same property whether the schema calls the slot `name`.
+
+`BaseSchemaRegistry` loads schemas from a directory and returns one by name and class. `LinkMlSchemaRegistry` in Layer 3 is the implementation used at runtime.
+
+## Collected values
+
+`MetadataCollector` is the worksheet for one run. Plugins append; they do not overwrite.
+
+```python
+collector.collect(source, property_uri, value, confidence)
 ```
 
-`SoftwareMetadata` is not a copy of maSMP or CodeMeta. Shared fields (`name`, `author`, `license`, …) are extracted once. Schema-specific fields use explicit prefixes (`masmp_*`, `codemeta_*`) when the meaning is tied to one export schema.
+Each call stores a `MetadataProperty`:
 
-**Shared primitives** (`Person`, `License`, `ReferencePublication`, `VersionControlSystem`, …) live under `entities/shared_primitives/`.
+| Field | Meaning |
+|-------|---------|
+| `source` | Short label, such as `Platform API` or `CFF File` |
+| `property_name` | Property URI |
+| `property_value` | Extracted value |
+| `confidence` | Ranking weight for this source. Omitted callers are treated as `1.0` |
+| `evidence` | Optional supporting text, used by the LLM plugins |
+| `extraction_confidence` | Optional score from the LLM pipeline, kept separate from `confidence` |
 
-**FAIR assessment** result types live under `entities/fair_assessment/`. The scoring logic runs in Layer 3 (`evaluators/`); Layer 1 only defines the result shape.
+`get_most_confident(uri)` returns the record with the highest `confidence`. That record is the one `JSONLDBuilder` and `build_enriched_metadata` publish. The other records stay on the collector. The enriched HTTP response exposes them as `alternatives`.
 
-## What is a schema?
+`confidence` becomes `source_reliability` in the API. It ranks sources against each other. `extraction_confidence` is only the LLM's own score for the text it read.
 
-A **schema** is an output vocabulary (maSMP or CODEMETA). Layer 1 holds export field lists and JSON-LD context definitions under `app/layer_1/schemas/`.
+## What does not belong here
 
-```text
-SoftwareMetadata  -->  JSONLDBuilder  -->  maSMP or CodeMeta document
-```
-
-`schemas/definitions.py` maps schema names to context, node types, and allowed export keys.
-
-## What is provenance?
-
-**Provenance** records where a value came from and how trustworthy that source is.
-
-The software provenance package (`app/layer_1/provenance/software/`) defines:
-
-- **Source ids** — `github_api`, `citation_cff`, `openalex`, … (`defaults.py`)
-- **Confidence defaults** per source (`defaults.py`)
-- **Property → allowed sources** (`sources.py`)
-- **`MULTI_SOURCE_PROPERTIES`** — fields that can accumulate several sources (`author`, `keywords`, `identifier`, …)
-
-```text
-Pipeline (Layer 3) decides which extractors run.
-Provenance (Layer 1) defines valid sources and default confidence.
-Merge steps (Layer 3) record which sources actually contributed.
-```
-
-Provenance rules live in Python (version-controlled, testable), not in runtime user configuration.
-
-## Adding a new schema (same domain)
-
-1. Compare new schema fields to existing `SoftwareMetadata` fields.  
-2. Reuse fields when the meaning matches.  
-3. Add new fields only when needed; use schema prefixes for schema-specific concepts.  
-4. Add `app/layer_1/schemas/<schema>/` with `export_fields.py`.  
-5. Register in `schemas/definitions.py`.  
-6. Extend `JSONLDBuilder` and composer profiles as needed.
-
-## Adding a new domain
-
-Use a separate domain when the subject is **not** research software (for example training materials).
-
-1. New entity package under `entities/`.  
-2. Domain-specific schemas and `provenance/<domain>/` if rules differ.  
-3. Reuse shared primitives where meanings align.  
-4. Compose Layer 3 steps for the new domain without changing the software pipeline unintentionally.
-
-## Adding a new extraction source
-
-1. Add source id and confidence in `provenance/software/defaults.py`.  
-2. Add the source to relevant properties in `provenance/software/sources.py`.  
-3. Implement extract/merge steps in Layer 3 that call `record_field` or `record_field_provenance` with that source.  
-4. Add tests for provenance and extraction metadata.
-
-## Design principles
-
-Layer 1 answers:
-
-- Is this a core domain concept?  
-- Is this an export/schema rule?  
-- Is this a provenance policy?
-
-If not, the change belongs in an outer layer.
+Parsing, HTTP clients, plugin discovery, and response models live in outer layers. A new source is a plugin that calls `collect`. A new schema is a LinkML file plus the existing registry, as long as it can implement `BaseSchema`.
 
 ## Where to read next
 
-- [Layer 2](layer-2.md) — orchestration  
-- [Layer 3](layer-3.md) — pipelines and steps  
+- [Layer 2](layer-2.md) — who runs the collector
+- [Layer 3](layer-3.md) — who writes into it

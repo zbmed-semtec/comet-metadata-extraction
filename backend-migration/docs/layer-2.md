@@ -1,104 +1,81 @@
-# Layer 2: Application Use Cases
+# Layer 2: Use Case And Plugin Contracts
 
-Layer 2 **orchestrates** metadata extraction: detect platform, compose and run the Layer 3 pipeline, build JSON-LD, return results to callers (Layer 4 services, CLI, or tests). It does not parse `CITATION.cff`, call GitHub, or merge author lists — that is Layer 3.
+Layer 2 turns one repository URL into a pipeline run and a JSON-LD document. It does not parse citation files or call a platform API. Those are Layer 3 plugins.
 
-Read [Layer 1](layer-1.md) for `SoftwareMetadata` and [Architecture](architecture.md) for the full request path.
+Read [Layer 1](layer-1.md) for the collector and [Architecture](architecture.md) for the full request path.
 
-## What is a use case?
+## Use case
 
-A **use case** is one application operation end to end. The main implementation is **`ExtractMetadataUseCase`** in `app/layer_2/use_cases/extract_metadata.py`.
+`ExtractMetadataUseCase` in `app/layer_2/use_cases/extract_metadata.py` is the operation the API and CLI share.
 
 ```text
-Repository URL + schema + optional token
-              |
-              v
-    ExtractMetadataUseCase.execute()
-              |
-              +--> Layer 3: PipelineComposer + ExtractionPipelineRunner
-              |
-              +--> Layer 3: JSONLDBuilder.build_jsonld()
-              |
-              v
-    ExtractMetadataResult
-      - jsonld_document
-      - extraction_metadata (optional, per-field source/confidence)
-      - metadata (SoftwareMetadata, for FAIRness etc.)
+repo URL + schema + optional token
+        |
+        v
+ExtractMetadataUseCase.execute()
+        |
+        +--> PluginPipelineComposer.compose(context)
+        |
+        +--> ExtractionPipelineRunner.run(...)
+        |
+        +--> JSONLDBuilder.build_jsonld(collector, schema)
+        |
+        v
+ExtractMetadataResult
+    jsonld_document
+    extraction_state   # collector, scratchpad, per-plugin errors
 ```
 
-The use case stays thin: collaborators are injected in the constructor for testing.
+`execute()`:
 
-## What Layer 2 owns
+1. Builds an `ExtractionState` whose collector is the one injected by the caller.
+2. Builds an `ExtractionContext`: repository URL, domain `"software"`, schema, the URL again as `platform`, and the optional token.
+3. Asks the composer for a pipeline. `single_property` limits the pipeline to plugins for that one slot.
+4. Runs every step. A failing plugin is recorded on `state.errors` and the rest continue.
+5. Builds JSON-LD from the collector.
 
-- **Platform detection** from the repo URL (`URLPatternMatcher`, used from the use case).  
-- **Pipeline selection** via `PipelineComposer.compose(domain, schema, platform)`.  
-- **Initial state**: empty `SoftwareMetadata`, `ExtractionContext`, and `ExtractionState.data` (including `record_field` when a collector is configured).  
-- **Running** the pipeline through `ExtractionPipelineRunner`.  
-- **JSON-LD export** via the `JSONLDBuilder` protocol (implementation in `app/layer_3/builders/jsonld_builder.py`).  
-- **Progress callbacks** for streaming (`EXTRACTION_STEPS`: `pipeline`, `jsonld_build`).
+`EXTRACTION_STEPS` is the progress vocabulary for the streaming endpoint: `pipeline`, then `jsonld_build`.
 
-## Folder structure
+Collaborators are constructor arguments: `JSONLDBuilder`, `PipelineComposer`, `PipelineRunner`, and the `MetadataCollector`. Tests can pass stubs.
+
+## Contracts
+
+`app/layer_2/contracts/` holds the types the use case and the plugins share.
+
+| Type | Role |
+|------|------|
+| `ExtractionContext` | Immutable: `repo_url`, `domain`, `schema`, `platform`, `access_token` |
+| `ExtractionState` | Mutable: `metadata_collector`, `data` scratchpad, `errors` |
+| `ExtractionStep` | `name`, `extracts` (URI set), `platforms`, and `extract(context, state)` |
+| `ExtractionPipeline` | Ordered steps |
+| `PipelineComposer` | `compose(context, single_property) -> pipeline` |
+| `PipelineRunner` | `run(pipeline, context, state) -> state` |
+
+`platform` on the context is the repository URL. A plugin is applicable when one of its `platforms` strings occurs in that URL (`github.com`, `gitlab.com`, `codeberg.org`).
+
+## Plugins
 
 ```text
 app/layer_2/
-`-- use_cases/
-    `-- extract_metadata.py
+|-- base_plugin.py                  # name, version, priority_level, on_load
+|-- extraction_plugin.py            # ExtractionPlugin.applicable()
+|-- plugin_manager.py               # discover and instantiate
+`-- extraction_plugin_manager.py    # index by extracted URI
 ```
 
-`extract_metadata.py` contains:
+`PluginManager.discover(package)` imports every module under the package and registers concrete `BasePlugin` subclasses. `ExtractionPluginManager` indexes each plugin by the URIs in `extracts`.
 
-- `ExtractMetadataUseCase`, `ExtractMetadataResult`  
-- `EXTRACTION_STEPS` (progress labels for the API)  
-- `_build_record_field()` — attaches `state.data["record_field"]` to the optional `ExtractionMetadataCollector`  
-  - Steps may call `record(field)` for platform defaults, or `record(field, source=..., confidence=...)` for explicit provenance  
-  - Merge steps typically use `record_field_provenance()` in Layer 3 (see [Layer 3](layer-3.md))
+`select(property_name, context)`:
 
-## How `execute()` works
+1. Resolves the slot to a URI through the schema.
+2. Looks up plugins that declared that URI.
+3. Keeps those for which `applicable(context)` is true.
 
-1. Detect `github` or `gitlab`; error if unsupported.  
-2. `PipelineComposer.compose(...)`.  
-3. Build `ExtractionState` with `SoftwareMetadata()` and `data["record_field"]` when enrichment is enabled.  
-4. Build `ExtractionContext` (repo URL, domain, schema, platform, token).  
-5. `pipeline_runner.run(pipeline, context, state)`.  
-6. `jsonld_builder.build_jsonld(state.metadata, schema, has_release)`.  
-7. Return `ExtractMetadataResult` including `collector.get_all()` when configured.
+An unknown slot raises `UnknownPropertyError`. A known slot with no applicable plugin is a warning; the property is left empty. In single-property mode that empty selection is an error.
 
-Individual Layer 3 step names (for example `github.extract_keywords`) are separate from the coarse progress ids above.
-
-## Imports from Layer 3
-
-Layer 2 imports **contracts and composer**, not every step class:
-
-```text
-PipelineComposer
-ExtractionPipelineRunner
-ExtractionMetadataCollector (optional)
-JSONLDBuilder (protocol; concrete class in Layer 3)
-```
-
-## Adding a new use case
-
-1. New module under `app/layer_2/use_cases/`.  
-2. Constructor injection for collaborators.  
-3. No direct HTTP or parsing in the use case body.  
-4. Small result dataclass.  
-5. Tests with stubs (`tests/test_extract_metadata_usecase.py`).
-
-## Extraction metadata (UI provenance)
-
-For fields to appear in `enriched_metadata` on the API:
-
-1. **Layer 3** — record source/confidence in extract or merge steps (`record_field`, `record_field_provenance`). For multi-source fields, record once per contributing source (`MULTI_SOURCE_PROPERTIES` in Layer 1).  
-2. **Layer 4** — `build_enriched_metadata()` maps entity field names to JSON-LD keys and attaches `category` for maSMP.
-
-Layer 1 defines which sources are valid; Layer 3 records what actually contributed.
-
-## Design principles
-
-- Sequence work for one user request here.  
-- Put parsing, HTTP, and merge logic in Layer 3 steps.
+`priority_level` lives on `BasePlugin` (default `100`). The composer uses it. The manager does not.
 
 ## Where to read next
 
-- [Layer 3](layer-3.md) — steps, bundles, composer  
-- [Layer 4](layer-4.md) — HTTP API  
-- [Architecture](architecture.md)  
+- [Layer 3](layer-3.md) — composer and the plugins it discovers
+- [Layer 4](layer-4.md) — who constructs the use case
