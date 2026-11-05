@@ -8,7 +8,7 @@ from app.layer_3.plugins.llm.prompt import build_prompt
 from app.layer_3.plugins.llm.extraction import (
     LlmBuildInstructionsExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
     extract_json,
     normalize_readme_property,
 )
@@ -61,12 +61,12 @@ class _FakeContext:
     pass
 
 
-class _TestableLlmNameExtractor(LlmNameExtractor):
-    name = "test-llm-name-extractor"
-    platforms = {"github"}
+# class _TestableLlmNameExtractor(LlmNameExtractor):
+#     name = "test-llm-name-extractor"
+#     platforms = {"github"}
 
-    def get_client(self, context, state):
-        return context.client
+#     def get_client(self, context, state):
+#         return context.client
 
 
 class _TestableLlmBuildInstructionsExtractor(LlmBuildInstructionsExtractor):
@@ -260,70 +260,70 @@ def test_retrieve_top_chunks_prioritizes_keyword_matches_when_embeddings_disable
     assert top_chunks[0]["rank"] == 1
 
 
-def test_llm_name_extractor_uses_readme_text_and_collects_result(monkeypatch):
-    extractor = _TestableLlmNameExtractor()
-    state = _FakeState()
-    context = _FakeContext()
-    context.client = _FakeClient([])
-    fake_files = [_FakeReadmeFile("# Demo Project"), _FakeReadmeFile("The project is called Example App.")]
+# def test_llm_name_extractor_uses_readme_text_and_collects_result(monkeypatch):
+#     extractor = _TestableLlmNameExtractor()
+#     state = _FakeState()
+#     context = _FakeContext()
+#     context.client = _FakeClient([])
+#     fake_files = [_FakeReadmeFile("# Demo Project"), _FakeReadmeFile("The project is called Example App.")]
 
-    monkeypatch.setattr("app.layer_3.plugins.llm.extraction.settings.llm_enabled", True)
-    monkeypatch.setattr(context, "client", _FakeClient(fake_files))
+#     monkeypatch.setattr("app.layer_3.plugins.llm.extraction.settings.llm_enabled", True)
+#     monkeypatch.setattr(context, "client", _FakeClient(fake_files))
 
-    captured = {}
+#     captured = {}
 
-    def _fake_extract_property(property_name, readme_text, provider, model, base_url, top_k=5):
-        captured["property_name"] = property_name
-        captured["readme_text"] = readme_text
-        captured["provider"] = provider
-        captured["model"] = model
-        captured["base_url"] = base_url
-        captured["top_k"] = top_k
-        return {"value": "Example App", "confidence": 0.87, "evidence": "The project is called Example App."}
+#     def _fake_extract_property(property_name, readme_text, provider, model, base_url, top_k=5):
+#         captured["property_name"] = property_name
+#         captured["readme_text"] = readme_text
+#         captured["provider"] = provider
+#         captured["model"] = model
+#         captured["base_url"] = base_url
+#         captured["top_k"] = top_k
+#         return {"value": "Example App", "confidence": 0.87, "evidence": "The project is called Example App."}
 
-    monkeypatch.setattr("app.layer_3.plugins.llm.extraction.extract_property", _fake_extract_property)
-    monkeypatch.setattr("app.layer_3.plugins.llm.extraction.resolve_model_config", lambda: ("active", "ollama", "phi4-mini", "http://localhost:11434"))
+#     monkeypatch.setattr("app.layer_3.plugins.llm.extraction.extract_property", _fake_extract_property)
+#     monkeypatch.setattr("app.layer_3.plugins.llm.extraction.resolve_model_config", lambda: ("active", "ollama", "phi4-mini", "http://localhost:11434"))
 
-    result_state = extractor.extract(context, state)
+#     result_state = extractor.extract(context, state)
 
-    assert result_state is state
-    assert captured["property_name"] == "name"
-    assert "# Demo Project" in captured["readme_text"]
-    assert "The project is called Example App." in captured["readme_text"]
-    assert captured["top_k"] == 5
-    assert state.metadata_collector.calls == [
-        {
-            "source": "LLM README",
-            "property_name": "https://schema.org/name",
-            "property_value": "Example App",
-            "confidence": 0.7,
-            "evidence": "The project is called Example App.",
-            "extraction_confidence": 0.87,
-        }
-    ]
+#     assert result_state is state
+#     assert captured["property_name"] == "name"
+#     assert "# Demo Project" in captured["readme_text"]
+#     assert "The project is called Example App." in captured["readme_text"]
+#     assert captured["top_k"] == 5
+#     assert state.metadata_collector.calls == [
+#         {
+#             "source": "LLM README",
+#             "property_name": "https://schema.org/name",
+#             "property_value": "Example App",
+#             "confidence": 0.7,
+#             "evidence": "The project is called Example App.",
+#             "extraction_confidence": 0.87,
+#         }
+#     ]
 
 
-def test_llm_name_extractor_short_circuits_when_disabled(monkeypatch):
-    extractor = _TestableLlmNameExtractor()
-    state = _FakeState()
-    context = _FakeContext()
-    context.client = _FakeClient([_FakeReadmeFile("# Demo Project")])
+# def test_llm_name_extractor_short_circuits_when_disabled(monkeypatch):
+#     extractor = _TestableLlmNameExtractor()
+#     state = _FakeState()
+#     context = _FakeContext()
+#     context.client = _FakeClient([_FakeReadmeFile("# Demo Project")])
 
-    monkeypatch.setattr("app.layer_3.plugins.llm.extraction.settings.llm_enabled", False)
+#     monkeypatch.setattr("app.layer_3.plugins.llm.extraction.settings.llm_enabled", False)
 
-    called = {"extract_property": False}
+#     called = {"extract_property": False}
 
-    def _fail_extract_property(*args, **kwargs):
-        called["extract_property"] = True
-        raise AssertionError("extract_property should not run when LLM is disabled")
+#     def _fail_extract_property(*args, **kwargs):
+#         called["extract_property"] = True
+#         raise AssertionError("extract_property should not run when LLM is disabled")
 
-    monkeypatch.setattr("app.layer_3.plugins.llm.extraction.extract_property", _fail_extract_property)
+#     monkeypatch.setattr("app.layer_3.plugins.llm.extraction.extract_property", _fail_extract_property)
 
-    result_state = extractor.extract(context, state)
+#     result_state = extractor.extract(context, state)
 
-    assert result_state is state
-    assert called["extract_property"] is False
-    assert state.metadata_collector.calls == []
+#     assert result_state is state
+#     assert called["extract_property"] is False
+#     assert state.metadata_collector.calls == []
 
 
 def test_normalize_readme_property_enforces_url_and_deduplicates_lists():

@@ -14,7 +14,7 @@ from app.layer_3.plugins.llm.extraction import (
     LlmDescriptionExtractor,
     LlmInstallationExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
     LlmReadmePropertyExtractor,
 )
 
@@ -26,6 +26,6 @@ __all__ = [
     "LlmDescriptionExtractor",
     "LlmInstallationExtractor",
     "LlmIntendedUseExtractor",
-    "LlmNameExtractor",
+    # "LlmNameExtractor",
     "LlmReadmePropertyExtractor",
 ]

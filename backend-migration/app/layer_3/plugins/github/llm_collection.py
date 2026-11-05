@@ -7,13 +7,13 @@ from app.layer_3.plugins.llm.extraction import (
     LlmDescriptionExtractor,
     LlmInstallationExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
 )
 
 
-class GitHubLlmNameExtractor(LlmNameExtractor, GitHubBaseExtractor):
-    """schema:name"""
-    name = "github.llm_name_extractor"
+# class GitHubLlmNameExtractor(LlmNameExtractor, GitHubBaseExtractor):
+#     """schema:name"""
+#     name = "github.llm_name_extractor"
 
 
 class GitHubLlmDescriptionExtractor(LlmDescriptionExtractor, GitHubBaseExtractor):

@@ -7,13 +7,13 @@ from app.layer_3.plugins.llm.extraction import (
     LlmDescriptionExtractor,
     LlmInstallationExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
 )
 
 
-class CodebergLlmNameExtractor(LlmNameExtractor, CodebergBaseExtractor):
-    """schema:name"""
-    name = "codeberg.llm_name_extractor"
+# class CodebergLlmNameExtractor(LlmNameExtractor, CodebergBaseExtractor):
+#     """schema:name"""
+#     name = "codeberg.llm_name_extractor"
 
 
 class CodebergLlmDescriptionExtractor(LlmDescriptionExtractor, CodebergBaseExtractor):

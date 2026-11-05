@@ -134,40 +134,40 @@ def extract_property(property_name: str, readme_text: str, provider: str, model:
     return data
 
 
-class LlmNameExtractor(LlmBaseExtractor):
-    """Extract a repository's ``schema:name`` from README content using an LLM."""
+# class LlmNameExtractor(LlmBaseExtractor):
+#     """Extract a repository's ``schema:name`` from README content using an LLM."""
 
-    extracts = {"https://schema.org/name"}
+#     extracts = {"https://schema.org/name"}
 
-    def extract(self, context, state):
-        """Collect an LLM-inferred repository name into the extraction state."""
-        if not settings.llm_enabled:
-            return state
+#     def extract(self, context, state):
+#         """Collect an LLM-inferred repository name into the extraction state."""
+#         if not settings.llm_enabled:
+#             return state
 
-        client = self.get_client(context, state)
-        readme_text = "\n\n------\n\n".join(
-            str(readme_file.get_content())
-            for readme_file in client.get_readme_candidate_files()
-        ).strip()
+#         client = self.get_client(context, state)
+#         readme_text = "\n\n------\n\n".join(
+#             str(readme_file.get_content())
+#             for readme_file in client.get_readme_candidate_files()
+#         ).strip()
 
-        if not readme_text:
-            return state
+#         if not readme_text:
+#             return state
 
-        _, provider, model_name, base_url = resolve_model_config()
-        result = extract_property(
-            property_name="name",
-            readme_text=readme_text,
-            provider=provider,
-            model=model_name,
-            base_url=base_url,
-            top_k=5,
-        )
+#         _, provider, model_name, base_url = resolve_model_config()
+#         result = extract_property(
+#             property_name="name",
+#             readme_text=readme_text,
+#             provider=provider,
+#             model=model_name,
+#             base_url=base_url,
+#             top_k=5,
+#         )
 
-        value = result.get("value")
-        if value:
-            _collect_llm_value(state, "https://schema.org/name", value, result)
+#         value = result.get("value")
+#         if value:
+#             _collect_llm_value(state, "https://schema.org/name", value, result)
 
-        return state
+#         return state
 
 
 # README properties that can be supplied by the prompt configuration and also
@@ -248,7 +248,7 @@ class LlmReadmePropertyExtractor(LlmBaseExtractor):
             return state
 
         # A deterministic plugin has already supplied this field.
-        if any(state.metadata_collector.get_most_confident(uri) for uri in self.extracts):
+        if any(state.metadata_collector.get_most_reliable(uri) for uri in self.extracts):
             return state
 
         client = self.get_client(context, state)
