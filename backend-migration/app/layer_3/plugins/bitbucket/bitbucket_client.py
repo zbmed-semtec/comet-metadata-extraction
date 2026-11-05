@@ -69,7 +69,7 @@ class BitbucketClient(GitPlatformClient):
 
     name = "bitbucket.client"
     _PAGE_LEN = 100
-    _MAX_PAGES = 1000
+    _MAX_PAGES = 10
 
     def _get_api_base_url(self) -> str:
         return "https://api.bitbucket.org/2.0"

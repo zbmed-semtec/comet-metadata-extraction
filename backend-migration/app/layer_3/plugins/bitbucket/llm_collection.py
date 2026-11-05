@@ -7,13 +7,13 @@ from app.layer_3.plugins.llm.extraction import (
     LlmDescriptionExtractor,
     LlmInstallationExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
 )
 
 
-class BitbucketLlmNameExtractor(LlmNameExtractor, BitbucketBaseExtractor):
-    """schema:name"""
-    name = "bitbucket.llm_name_extractor"
+# class BitbucketLlmNameExtractor(LlmNameExtractor, BitbucketBaseExtractor):
+#     """schema:name"""
+#     name = "bitbucket.llm_name_extractor"
 
 
 class BitbucketLlmDescriptionExtractor(LlmDescriptionExtractor, BitbucketBaseExtractor):
