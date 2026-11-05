@@ -1,5 +1,5 @@
 """
-Build enriched_metadata for the API (per-property confidence, source, category).
+Build enriched_metadata for the API (per-property source reliability, source, category).
 Values come from results; this module only shapes annotations for the response.
 """
 from typing import Dict, Any
@@ -13,7 +13,10 @@ def build_enriched_metadata(
 ) -> Dict[str, Any]:
     """
     Build enriched_metadata for the API response: per-profile, per-property annotations only.
-    No value (get that from results); only confidence, source, category.
+    No value (get that from results); source_reliability, source, and category, plus
+    the LLM pipeline's confidence and evidence when that source supplied the value.
+    source_reliability is how reliable the winning source is. It is separate from
+    the confidence score returned by the LLM extraction pipeline.
     - For maSMP: per-profile (SoftwareSourceCode / SoftwareApplication), with category.
     - For CODEMETA: flat \"codemeta\" profile without category.
     """
@@ -21,7 +24,7 @@ def build_enriched_metadata(
     result = {}
     for prop in schema.get_property_list():
         uri = schema.get_uri(prop)
-        record = collector.get_most_confident(uri)
+        record = collector.get_most_reliable(uri)
         category = schema.get_categories_of(property_name=prop)
         if isinstance(category, list):
             if len(category) > 0:
@@ -32,9 +35,9 @@ def build_enriched_metadata(
             category = "optional"
         if not record:
             continue
-        result[prop] = {
-            "confidence": record.confidence,
-            "source": record.source,
+        entry = {
             "category": category,
         }
+        entry.update(record.as_dict())
+        result[prop] = entry
     return result

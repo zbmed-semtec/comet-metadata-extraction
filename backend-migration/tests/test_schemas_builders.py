@@ -29,5 +29,21 @@ def test_jsonld_builder_serializes_pydantic_values(connoss_schema):
 
 def test_enriched_metadata_uses_best_record_and_schema_category(collector, connoss_schema):
     out = build_enriched_metadata(collector, connoss_schema)
-    assert out["name"] == {"confidence": .95, "source": "CFF", "category": "Minimum"}
+    assert out["name"] == {"source_reliability": .95, "source": "CFF", "category": "Minimum"}
     assert "codeRepository" not in out
+
+def test_enriched_metadata_includes_llm_confidence_and_evidence(connoss_schema):
+    from app.layer_1.metadata_collector.metadata_collector import MetadataCollector
+    collector = MetadataCollector()
+    collector.collect(
+        "LLM README",
+        "https://schema.org/description",
+        "Extracts metadata",
+        0.7,
+        evidence="Use this tool to extract metadata.",
+        extraction_confidence=0.91,
+    )
+    out = build_enriched_metadata(collector, connoss_schema)
+    assert out["description"]["source_reliability"] == 0.7
+    assert out["description"]["confidence"] == 0.91
+    assert out["description"]["evidence"] == "Use this tool to extract metadata."

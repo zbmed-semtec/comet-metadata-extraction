@@ -5,7 +5,13 @@ import re
 from typing import Any
 
 from app.config.settings import settings
-from app.layer_3.plugins.llm.confidence import normalize_confidence
+from app.layer_3.plugins.llm.confidence import (
+    LLM_SOURCE_RELIABILITY,
+    confidence_from_evidence,
+    format_evidence,
+    normalize_confidence,
+    supporting_evidence,
+)
 from app.layer_3.plugins.llm.heuristics import extract_license_from_readme
 from app.layer_3.plugins.llm.prompt import build_prompt
 from app.layer_3.plugins.llm.provider import resolve_model_config, run_llm
@@ -17,6 +23,18 @@ from app.layer_3.plugins.llm.retrieval import (
     split_with_metadata,
 )
 from app.layer_3.plugins.llm.foundation import LlmBaseExtractor
+
+def _collect_llm_value(state, uri: str, value: Any, result: dict) -> None:
+    """Record an LLM README value with source reliability kept separate from model confidence."""
+    state.metadata_collector.collect(
+        "LLM README",
+        uri,
+        value,
+        LLM_SOURCE_RELIABILITY,
+        evidence=format_evidence(result.get("evidence")),
+        extraction_confidence=normalize_confidence(result.get("confidence", 0.0)),
+    )
+
 
 def extract_json(text: str) -> dict:
     """Parse an LLM response into an extraction-result dictionary."""
@@ -100,47 +118,56 @@ def extract_property(property_name: str, readme_text: str, provider: str, model:
     raw = run_llm(prompt, provider=provider, model=model, base_url=base_url)
     data = extract_json(raw)
     data.setdefault("value", None)
-    data.setdefault("evidence", None)
-    data["confidence"] = normalize_confidence(data.get("confidence", 0.0))
+    data["evidence"] = supporting_evidence(
+        data.get("value"),
+        data.get("evidence"),
+        readme_text,
+        property_name,
+    )
+    data["confidence"] = confidence_from_evidence(
+        data.get("confidence", 0.0),
+        data.get("value"),
+        data.get("evidence"),
+        readme_text,
+    )
     data["retrieved_chunks"] = chunk_info
     return data
 
 
-class LlmNameExtractor(LlmBaseExtractor):
-    """Extract a repository's ``schema:name`` from README content using an LLM."""
+# class LlmNameExtractor(LlmBaseExtractor):
+#     """Extract a repository's ``schema:name`` from README content using an LLM."""
 
-    extracts = {"https://schema.org/name"}
+#     extracts = {"https://schema.org/name"}
 
-    def extract(self, context, state):
-        """Collect an LLM-inferred repository name into the extraction state."""
-        if not settings.llm_enabled:
-            return state
+#     def extract(self, context, state):
+#         """Collect an LLM-inferred repository name into the extraction state."""
+#         if not settings.llm_enabled:
+#             return state
 
-        client = self.get_client(context, state)
-        readme_text = "\n\n------\n\n".join(
-            str(readme_file.get_content())
-            for readme_file in client.get_readme_candidate_files()
-        ).strip()
+#         client = self.get_client(context, state)
+#         readme_text = "\n\n------\n\n".join(
+#             str(readme_file.get_content())
+#             for readme_file in client.get_readme_candidate_files()
+#         ).strip()
 
-        if not readme_text:
-            return state
+#         if not readme_text:
+#             return state
 
-        _, provider, model_name, base_url = resolve_model_config()
-        result = extract_property(
-            property_name="name",
-            readme_text=readme_text,
-            provider=provider,
-            model=model_name,
-            base_url=base_url,
-            top_k=5,
-        )
+#         _, provider, model_name, base_url = resolve_model_config()
+#         result = extract_property(
+#             property_name="name",
+#             readme_text=readme_text,
+#             provider=provider,
+#             model=model_name,
+#             base_url=base_url,
+#             top_k=5,
+#         )
 
-        value = result.get("value")
-        if value:
-            confidence = normalize_confidence(result.get("confidence", 0.7), default=0.7)
-            state.metadata_collector.collect("LLM README", "https://schema.org/name", value, confidence)
+#         value = result.get("value")
+#         if value:
+#             _collect_llm_value(state, "https://schema.org/name", value, result)
 
-        return state
+#         return state
 
 
 # README properties that can be supplied by the prompt configuration and also
@@ -221,7 +248,7 @@ class LlmReadmePropertyExtractor(LlmBaseExtractor):
             return state
 
         # A deterministic plugin has already supplied this field.
-        if any(state.metadata_collector.get_most_confident(uri) for uri in self.extracts):
+        if any(state.metadata_collector.get_most_reliable(uri) for uri in self.extracts):
             return state
 
         client = self.get_client(context, state)
@@ -246,9 +273,8 @@ class LlmReadmePropertyExtractor(LlmBaseExtractor):
         if not value:
             return state
 
-        confidence = normalize_confidence(result.get("confidence", 0.0))
         for uri in target_uris:
-            state.metadata_collector.collect("LLM README", uri, value, confidence)
+            _collect_llm_value(state, uri, value, result)
 
         return state
 

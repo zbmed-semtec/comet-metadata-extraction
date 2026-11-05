@@ -44,7 +44,7 @@ comet-rs extract <url> <schema> [--schema-class SCHEMA_CLASS] [--token TOKEN] [-
 - `schema` — Schema to use: `connoss`, `maSMP`, or `CODEMETA` (case-insensitive).
 - `--schema-class` — Schema class to use (default: `software`).
 - `--token` — Personal access token for the platform. If omitted, CoMET-RS looks for `GITHUB_TOKEN`, `GITLAB_TOKEN`, or `CODEBERG_TOKEN` in the environment, based on the repository URL. A token increases API rate limits and allows access to private repositories.
-- `--with-enrichment` — Include per-property enrichment metadata (source, confidence, category) alongside the extracted JSON-LD.
+- `--with-enrichment` — Include per-property enrichment metadata (source, source_reliability, category) alongside the extracted JSON-LD.
 
 Example:
 
@@ -59,7 +59,7 @@ Output (written to stdout as JSON):
   "schema": "connoss",
   "code_url": "https://github.com/zbmed-semtec/comet-metadata-extraction",
   "results": { "...": "JSON-LD metadata document..." },
-  "enriched_metadata": { "...": "per-property source/confidence/category..." }
+  "enriched_metadata": { "...": "per-property source/source_reliability/category..." }
 }
 ```
 
@@ -88,7 +88,7 @@ Output:
   "property_name": "license",
   "property_value": ["GPL-3.0"],
   "source": "github_api",
-  "confidence": 0.95
+  "source_reliability": 0.95
 }
 ```
 
@@ -143,7 +143,7 @@ extracted_at, matches = comet_rs.extract_property(
     token=None,                  # or rely on GITHUB_TOKEN / GITLAB_TOKEN / CODEBERG_TOKEN
 )
 for match in matches:
-    print(extracted_at, match["profile"], match["value"], match["source"], match["confidence"])
+    print(extracted_at, match["profile"], match["value"], match["source"], match["source_reliability"])
 ```
 
 ## Supported schemas

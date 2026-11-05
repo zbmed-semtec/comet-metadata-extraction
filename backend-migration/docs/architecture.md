@@ -1,90 +1,81 @@
 # Architecture
 
-CoMET-RS uses a layered architecture so each part has a clear job:
+CoMET-RS keeps four layers. Outer layers call inward. Plugins do not import FastAPI, and the API does not parse `CITATION.cff`.
 
-- **Layer 1** — internal data model, export schemas, provenance rules  
-- **Layer 2** — orchestration (which pipeline to run for a request)  
-- **Layer 3** — extraction steps (fetch, parse, enrich, merge into `SoftwareMetadata`)  
-- **Layer 4** — HTTP API (FastAPI routes and response shaping)
+- **Layer 1** — schema contract and the collector that stores candidates
+- **Layer 2** — one use case, plugin contracts, and plugin discovery
+- **Layer 3** — platform and LLM plugins, pipeline composition, JSON-LD export, LinkML loading, FAIR scoring
+- **Layer 4** — HTTP routes and response shaping
 
-Dependencies point inward: outer layers use inner layers; `SoftwareMetadata` does not import FastAPI or GitHub clients.
-
-## The big picture
-
-A repository URL enters the system; information is collected from platform APIs, repository files, and external services; everything is stored in one internal `SoftwareMetadata` object; the result is exported as maSMP or CodeMeta JSON-LD.
+## One request
 
 ```text
-API or CLI request
-      |
-      v
-Use case orchestration (Layer 2)
-      |
-      v
-Composer-built extraction pipeline (Layer 3)
-      |
-      v
-Extract steps + merge steps
-      |
-      v
-SoftwareMetadata (Layer 1)
-      |
-      v
-JSON-LD export (Layer 3 builder) + API response (Layer 4)
+GET /api/metadata/enriched
+        |
+        v
+Layer 4  metadata_service.run_extraction
+        |
+        v
+Layer 2  ExtractMetadataUseCase
+        |  builds ExtractionContext + ExtractionState
+        v
+Layer 3  PluginPipelineComposer
+        |  plugins whose `extracts` URIs match the schema,
+        |  and whose `platforms` match the repository URL
+        v
+Layer 3  ExtractionPipelineRunner
+        |  each plugin calls MetadataCollector.collect(...)
+        v
+Layer 1  MetadataCollector
+        |
+        v
+Layer 3  JSONLDBuilder  (highest confidence per property)
+        |
+        v
+Layer 4  JSON-LD, and enriched_metadata when requested
 ```
 
-The backend extracts shared fields once into `SoftwareMetadata`, then projects them into the requested schema (maSMP or CODEMETA).
+The schema decides which properties exist. Plugins decide which of those properties they can fill, and for which hosts. Several plugins may record the same property. Export keeps the record with the highest `confidence`.
 
-### One HTTP request
-
-```text
-Layer 4  FastAPI route (e.g. GET /api/metadata/enriched)
-    →
-Layer 2  ExtractMetadataUseCase (compose pipeline, run it, build JSON-LD)
-    →
-Layer 3  Extraction steps (candidates in state.data, merges into metadata)
-    →
-Layer 4  build_enriched_metadata() and Pydantic response models
-```
-
-See [Layer 2](layer-2.md) and [Layer 3](layer-3.md) for detail.
+`priority_level` only controls run order. The default is `100`. LLM plugins use `10`, so they run after platform plugins. A higher number runs first.
 
 ## The four layers
 
-**Layer 1** defines `SoftwareMetadata`, shared value objects (`Person`, `License`, …), schema export rules, and the software provenance registry (which sources may set which fields).
+**Layer 1** (`app/layer_1/`) defines `BaseSchema` and `MetadataCollector`. A collector holds a list of `MetadataProperty` records per URI: source label, value, confidence, and optional LLM evidence.
 
-**Layer 2** runs `ExtractMetadataUseCase`: detect platform, compose the pipeline, run it, call `JSONLDBuilder`, return JSON-LD and optional extraction metadata.
+**Layer 2** (`app/layer_2/`) runs `ExtractMetadataUseCase`: compose a pipeline, run it, call `JSONLDBuilder`. `ExtractionPlugin` is the contract plugins implement. `ExtractionPluginManager` discovers plugin classes under `app.layer_3.plugins` and indexes them by the URIs they extract.
 
-**Layer 3** implements the pipeline: GitHub/GitLab steps, CFF/README/license parsers, OpenAlex/Zenodo/Wayback/Software Heritage steps, property-level merge steps, and `extraction_metadata` for per-field source/confidence.
+**Layer 3** (`app/layer_3/`) is the extraction engine. GitHub, GitLab, and Codeberg plugins mix a platform client with shared property extractors. `PluginPipelineComposer` builds the step list. `LinkMlSchemaRegistry` loads `schemas/*.yaml`. `JSONLDBuilder` writes the document. `evaluate_fairness` scores the JSON-LD.
 
-**Layer 4** exposes `/api/*` endpoints, wires services to the use case, and builds `enriched_metadata` for the UI.
+**Layer 4** (`app/layer_4/`) exposes `/api/*`, wires the use case in `metadata_service.py`, and builds `enriched_metadata`.
 
 ## Dependency direction
 
 ```text
-Layer 4: API
+Layer 4  API
     |
     v
-Layer 2: Use cases
+Layer 2  use case + plugin contracts
     |
-    +--> Layer 3: steps, composers, builders, evaluators
+    +--> Layer 3  plugins, composer, builder, LinkML, evaluator
     |
     v
-Layer 1: Domain
+Layer 1  schema contract + collector
 ```
 
 ## Extending the system
 
-| Change | Main touchpoints |
-|--------|------------------|
-| New repository platform | Layer 3 platform steps + composer profile + URL matcher |
-| New output schema | Layer 1 schema package + JSON-LD builder export fields |
-| New metadata property | Layer 1 entity + provenance + Layer 3 extract/merge steps |
-| New API behavior | Layer 4 routes/services |
+| Change | Where |
+|--------|--------|
+| New repository host | Layer 3 platform package: client, base extractor (`platforms` set to the host), and one plugin class per shared extractor |
+| New output schema | LinkML YAML in `schemas/`, loaded by `LinkMlSchemaRegistry` |
+| New property on an existing schema | Slot in the YAML, then a plugin whose `extracts` contains that slot's URI |
+| New source for an existing property | Another plugin that `collect`s the same URI with its own source label and confidence |
+| New API behavior | Layer 4 routes and `metadata_service.run_extraction` |
 
 ## Where to read next
 
-- [Getting started](getting-started.md) — run the API and MkDocs locally  
-- [Layer 1](layer-1.md) — entities, schemas, provenance  
-- [Layer 2](layer-2.md) — use cases  
-- [Layer 3](layer-3.md) — pipelines and steps  
-- [Layer 4](layer-4.md) — HTTP API  
+- [Layer 1](layer-1.md) — collector and schema contract
+- [Layer 2](layer-2.md) — use case and plugin manager
+- [Layer 3](layer-3.md) — plugins and export
+- [Layer 4](layer-4.md) — HTTP API

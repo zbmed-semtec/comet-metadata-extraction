@@ -7,13 +7,13 @@ from app.layer_3.plugins.llm.extraction import (
     LlmDescriptionExtractor,
     LlmInstallationExtractor,
     LlmIntendedUseExtractor,
-    LlmNameExtractor,
+    # LlmNameExtractor,
 )
 
 
-class GitLabLlmNameExtractor(LlmNameExtractor, GitLabBaseExtractor):
-    """schema:name"""
-    name = "gitlab.llm_name_extractor"
+# class GitLabLlmNameExtractor(LlmNameExtractor, GitLabBaseExtractor):
+#     """schema:name"""
+#     name = "gitlab.llm_name_extractor"
 
 
 class GitLabLlmDescriptionExtractor(LlmDescriptionExtractor, GitLabBaseExtractor):

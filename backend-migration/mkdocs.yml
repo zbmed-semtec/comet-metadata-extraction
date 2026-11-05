@@ -1,7 +1,22 @@
-site_name: Comet Documentation
-site_description: Comet backend architecture and developer documentation
-site_url: ""
-repo_name: Comet
+site_name: Comet-rs Documentation
+site_description: Comet-rs backend architecture and developer documentation
+# Public address GitHub Pages will serve. The path is the repository name.
+# MkDocs uses this for the sitemap and for links under that subpath.
+site_url: https://zbmed-semtec.github.io/comet-metadata-extraction/
+repo_name: Comet-rs
+repo_url: https://github.com/zbmed-semtec/comet-metadata-extraction
+
+copyright: >-
+  <a href="https://www.zbmed.de/en/">ZB MED</a> |
+  <a href="https://www.zbmed.de/en/legal-notice">Legal notice</a> |
+  <a href="https://www.zbmed.de/en/disclaimer">Disclaimer</a> |
+  <a href="https://www.zbmed.de/en/privacy-policy">Privacy policy</a>
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zbmed-semtec/comet-metadata-extraction
+      name: GitHub
 
 docs_dir: docs
 
@@ -35,6 +50,7 @@ theme:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Run comet-rs: README_PYPI.md
   - Architecture: architecture.md
   - Layer 1: layer-1.md
   - Layer 2: layer-2.md

@@ -13,7 +13,9 @@ def build_prompt(property_name: str, context: str) -> str:
         f"Expected value shape: {schema_hint}\n\n"
         "No guessing. Return JSON only with the required keys: value, evidence, confidence.\n"
         "- value: extracted value or null\n"
-        "- evidence: exact short quote from context or null\n"
-        "- confidence: number from 0 to 1\n\n"
+        "- evidence: exact short quote from context, or a list of such quotes when the value is a list; null if unknown\n"
+        "- confidence: number from 0 to 1 measuring how directly the evidence states the value. "
+        "Do not default to 1. Use 1 only when the quote explicitly states the value, and a lower "
+        "score when the value is inferred or the quote is only loosely related.\n\n"
         f"Context:\n{context}"
     )
