@@ -8,9 +8,9 @@ from app.layer_2.contracts import ExtractionContext, ExtractionState, Extraction
 def test_collector_appends_records_and_selects_highest_confidence():
     c = MetadataCollector(); c.collect("low", "p", 1, .2); c.collect("high", "p", 2, .9)
     assert [r.source for r in c.get("p")] == ["low", "high"]
-    assert c.get_most_confident("p").property_value == 2
+    assert c.get_most_reliable("p").property_value == 2
     assert c.get("missing") == {}
-    assert c.get_most_confident("missing") is None
+    assert c.get_most_reliable("missing") is None
 
 def test_metadata_property_defaults_and_iteration_over_collector_data():
     p = MetadataProperty("s", "n", "v")

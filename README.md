@@ -122,7 +122,7 @@ comet-rs extract <url> <schema> [--schema-class SCHEMA_CLASS] [--token TOKEN] [-
 - `schema`: Schema to use, e.g. `ConnOSS`, `maSMP`, `CODEMETA`
 - `--schema-class`: defaults to `Software`
 - `--token`: GitHub/GitLab personal access token (optional, increases rate limits and allows access to private repos)
-- `--with-enrichment`: include source, confidence, and category metadata for each extracted property
+- `--with-enrichment`: include source, source_reliability, and category metadata for each extracted property
 
 Example:
 
@@ -166,7 +166,7 @@ The backend exposes the following endpoints (all under the `/api` prefix unless 
 |`GET`|`/`|Root/status endpoint|
 |`GET`|`/api/health`|Health check|
 |`GET`|`/api/metadata`|Extract full metadata for a repository|
-|`GET`|`/api/metadata/enriched`|Extract metadata with enrichment (source, confidence, category)|
+|`GET`|`/api/metadata/enriched`|Extract metadata with enrichment (source, source_reliability, category)|
 |`GET`|`/api/metadata/stream`|Stream metadata extraction results|
 |`GET`|`/api/metadata/property`|Extract a single metadata property|
 |`GET`|`/api/platforms`|List supported repository platforms|
@@ -193,8 +193,8 @@ CoMET's backend/CLI behavior can be adjusted via environment variables (all opti
 |`CORS_ALLOW_METHODS`|`["*"]`|Allowed CORS methods|
 |`CORS_ALLOW_HEADERS`|`["*"]`|Allowed CORS headers|
 |`LLM_API_KEY`|none|API key for LLM-based enrichment (optional)|
-|`LLM_MODEL`|`llama-3.1-70b-versatile`|LLM model used for enrichment|
-|`LLM_PROVIDER`|`groq`|LLM provider used for enrichment|
+|`LLM_MODEL`|`qwen2.5:7b`|LLM model used for enrichment|
+|`LLM_PROVIDER`|`ollama`|LLM provider used for enrichment|
 |`LOG_LEVEL`|`INFO`|Logging verbosity|
 |`GITHUB_TOKEN`|none|GitHub token used by the CLI/API for authenticated requests|
 |`GITLAB_TOKEN`|none|GitLab token used by the CLI/API for authenticated requests|

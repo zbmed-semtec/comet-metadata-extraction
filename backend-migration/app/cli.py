@@ -87,16 +87,19 @@ def _collect_property_results(
             enriched_key = _resolve_key(candidates, enriched_metadata)
             if enriched_key is not None:
                 meta = enriched_metadata[enriched_key]
-        matches.append(
-            {
-                "profile": jsonld_document.get("@type", schema),
-                "property": jsonld_key,
-                "value": jsonld_document[jsonld_key],
-                "source": meta.get("source"),
-                "confidence": meta.get("confidence"),
-                "category": meta.get("category"),
-            }
-        )
+        match = {
+            "profile": jsonld_document.get("@type", schema),
+            "property": jsonld_key,
+            "value": jsonld_document[jsonld_key],
+            "source": meta.get("source"),
+            "source_reliability": meta.get("source_reliability"),
+            "category": meta.get("category"),
+        }
+        if meta.get("confidence") is not None:
+            match["confidence"] = meta.get("confidence")
+        if meta.get("evidence") is not None:
+            match["evidence"] = meta.get("evidence")
+        matches.append(match)
 
     return {
         "schema": schema,
@@ -157,8 +160,12 @@ def _extract_property_command(args: argparse.Namespace) -> None:
             "property_name": match["property"],
             "property_value": match["value"],
             "source": match.get("source"),
-            "confidence": match.get("confidence"),
+            "source_reliability": match.get("source_reliability"),
         }
+        if "confidence" in match:
+            output["confidence"] = match["confidence"]
+        if "evidence" in match:
+            output["evidence"] = match["evidence"]
         _print_json(output)
 
 def _fairness_command(args: argparse.Namespace) -> None:
@@ -215,7 +222,7 @@ def main() -> None:
     extract_parser.add_argument(
         "--with-enrichment",
         action="store_true",
-        help="Include per-property enrichment (source, confidence, category) when available.",
+        help="Include per-property enrichment (source, source_reliability, category) when available.",
     )
     extract_parser.set_defaults(func=_extract_command)
 

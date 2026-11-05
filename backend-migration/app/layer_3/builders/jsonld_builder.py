@@ -15,7 +15,7 @@ class JSONLDBuilder(JSONLDBuilderBase):
         
         for property_name in schema.get_property_list():
             uri = schema.get_uri(property_name)
-            record = metadata.get_most_confident(uri)
+            record = metadata.get_most_reliable(uri)
             if record:
                 val = record.property_value
                 if isinstance(val, BaseModel):

@@ -15,9 +15,11 @@ export interface ExtractionProgress {
 }
 
 export interface EnrichedProperty {
-  confidence?: number | null
+  source_reliability?: number | null
   source?: string | string[] | null
   category?: 'required' | 'recommended' | 'optional'
+  confidence?: number | null
+  evidence?: string | null
 }
 
 export interface ExtractionStreamResult {

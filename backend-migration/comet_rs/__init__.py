@@ -44,10 +44,10 @@ def extract_property(
     token: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
-    Extract a single property (value + source + confidence) for a repository.
+    Extract a single property (value + source + source_reliability) for a repository.
 
     Returns:
-        (extracted_at_iso, [ {profile, value, source, confidence}, ... ])
+        (extracted_at_iso, [ {profile, value, source, source_reliability}, ... ])
 
     For connoss, the property may be present in both SoftwareSourceCode and
     SoftwareApplication profiles; all matches are returned. For CODEMETA,
