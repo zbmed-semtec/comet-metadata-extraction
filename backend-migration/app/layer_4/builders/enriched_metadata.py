@@ -24,7 +24,7 @@ def build_enriched_metadata(
     result = {}
     for prop in schema.get_property_list():
         uri = schema.get_uri(prop)
-        record = collector.get_most_confident(uri)
+        record = collector.get_most_reliable(uri)
         category = schema.get_categories_of(property_name=prop)
         if isinstance(category, list):
             if len(category) > 0:
@@ -36,13 +36,8 @@ def build_enriched_metadata(
         if not record:
             continue
         entry = {
-            "source_reliability": record.confidence,
-            "source": record.source,
             "category": category,
         }
-        if record.extraction_confidence is not None:
-            entry["confidence"] = record.extraction_confidence
-        if record.evidence:
-            entry["evidence"] = record.evidence
+        entry.update(record.as_dict())
         result[prop] = entry
     return result
