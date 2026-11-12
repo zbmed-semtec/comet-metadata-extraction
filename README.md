@@ -1,5 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18837374.svg)](https://doi.org/10.5281/zenodo.18837374)
 ![Status](https://img.shields.io/badge/repo_status-Active-green)
+[![PyPI](https://img.shields.io/pypi/v/comet-rs)](https://pypi.org/project/comet-rs/)
 
 <p align="center">
   <img src="docs/img/background.gif" width="100%">
